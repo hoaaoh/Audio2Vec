@@ -15,11 +15,3 @@ def read_csv_file(filename):
     return feats, lab
 
 
-def main():
-    
-    return
-
-
-if __name__ == '__main__':
-
-    main()
