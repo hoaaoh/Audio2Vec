@@ -14,4 +14,21 @@ def read_csv_file(filename):
             lab.append(int(row[-1]))
     return feats, lab
 
+def build_dic(filename):
+    dic = {}
+    rev_dic = {}
+    with open(filename,'r') as f:
+        for line in f:
+            word, ID= line.rstrip().split()
+            dic[word] = int(ID)
+            rev_dic[int(ID)] = word
 
+    return dic, rev_dic
+
+def build_targets(filename, dic):
+    targets = []
+    with open(filename,'r') as f:
+        for line in f:
+            targets.append(dic[line.rstrip()])
+
+    return targets
