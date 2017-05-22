@@ -8,7 +8,7 @@ def read_csv_file(filename):
     lab = []
     feats = []
     with open(filename, 'r') as f:
-        reader = csv.reader(f, delimiter=',')
+        reader = csv.reader(f, delimiter=' ')
         for row in reader:
             feats.append(list(map(float,row[:-1])))
             lab.append(int(row[-1]))
