@@ -32,3 +32,14 @@ def build_targets(filename, dic):
             targets.append(dic[line.rstrip()])
 
     return targets
+
+def build_label_color_list(target_list, color_list):
+    ''' assume the targets are in pairs 
+
+
+    '''
+    word_color_dict = {}
+    for i, target in enumerate(target_list):
+        word_color_dict[target] = color_list[i%len(color_list)]
+
+    return word_color_dict

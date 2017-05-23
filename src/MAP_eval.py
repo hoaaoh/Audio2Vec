@@ -3,8 +3,10 @@ import numpy as np
 from operator import itemgetter
 from sklearn.metrics.pairwise import cosine_similarity
 import random
+import argparse
+
 work_dir = "/home_local/hoa/Research/Interspeech2017/baseline"
-def AP(query_embed, all_embed, answer_inds, feat_dim=50):
+def AP(query_embed, all_embed, answer_inds, feat_dim=100):
     '''Computes average precision of one single query 
     args:
       query_embed: the embedding of one single query
@@ -15,10 +17,18 @@ def AP(query_embed, all_embed, answer_inds, feat_dim=50):
     '''
     pair_list = []
     answer = []
-
-    np_query = np.array(query_embed).reshape(1,100)
-    np_all = np.array(all_embed).reshape(-1,100)
+    '''
+    for i in all_embed:
+        dot = 0.
+        for k in range(len(query_embed)):
+            dot += query_embed[k]*i[k]
+        answer.append(dot)
+    '''
+    np_query = np.array(query_embed).reshape(1,feat_dim)
+    np_all = np.array(all_embed).reshape(-1,feat_dim)
     answer = cosine_similarity(np_query, np_all).flatten()
+
+
     total_right = 0
     for i, answer_i in enumerate(answer):
         pair_list.append((answer_inds[i],answer_i))
@@ -46,7 +56,7 @@ def transform_answer_index(all_list, target_answer):
     return  answer_inds
 
 
-def MAP(test_embed_label, db_embed_label):
+def MAP(test_embed_label, db_embed_label, feat_dim=100):
     ''' Computes mean average precision (MAP) 
     args:
       test_embed: the query embedding
@@ -63,7 +73,7 @@ def MAP(test_embed_label, db_embed_label):
         db_label.append(embed_label[1])
     for single_embed in test_embed_label:
         ans_inds = transform_answer_index(db_label, single_embed[1])
-        MAP += AP(single_embed[0],db_embed,ans_inds)
+        MAP += AP(single_embed[0],db_embed,ans_inds, feat_dim)
     MAP /= len(test_embed_label)
 
     return MAP
