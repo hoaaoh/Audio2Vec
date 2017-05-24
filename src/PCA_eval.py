@@ -170,6 +170,12 @@ def average_over_words_num(feat_dic, target_list):
             feat_lists.append(l)
     return feat_lists
 
+def plot_addtional_words():
+
+
+    return 
+
+
 def main():
     ### preprocessing ###
     feats, labs = reader.read_csv_file(FLAG.train_file)
@@ -195,7 +201,10 @@ def main():
 
 
     sampled_feats, sampled_delta_lab = sampling(all_feats_trans, delta_lab_list)
-    
+
+    if FLAG.save_model :
+        s = joblib.dumps(model,FLAG.model_fn)
+
     fig = plt.figure()
     if FLAG.pca_dim == 2:
         ### start plotting the average results ###
@@ -226,10 +235,6 @@ def main():
         
         return 
 
-    if FLAG.save_model :
-        s = joblib.dumps(model,)
-
-
 
     ax.legend(loc='upper right')
     plt.show()
@@ -256,8 +261,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_model', type=bool, default=False,
         help='save the PCA model or not. if True ,save if as'
              'pca_model')
-    parser.add_argument('--model_fn',
-        help='the model name to save 
+    parser.add_argument('--model_fn',type=str, default='pca.mdl',
+        help='the model name to save/load')
 
     FLAG = parser.parse_args()
 
