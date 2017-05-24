@@ -3,21 +3,19 @@
 import numpy as np
 import random
 from sklearn.decomposition import PCA
+from sklearn.externals import joblib
 import random
 import matplotlib.pyplot as plt 
 from mpl_toolkits.mplot3d import Axes3D
-from math import floor
+from math import floor 
 import argparse 
-
 import MAP_eval as MAP
 import data_parser as reader
-
 
 
 FLAG = None
 color_list = ['firebrick','red','darkorange','orange','forestgreen','lime',
     'aqua', 'dodgerblue','orchid', 'darkmagenta']
-
 
 def average_over_words(feat_dic):
     '''Assume feat_dic[word_ID] is a list of word utterance
@@ -195,6 +193,7 @@ def main():
     all_feats_trans = model.transform(all_feats)
     ### samples number of word occurances  ###
 
+
     sampled_feats, sampled_delta_lab = sampling(all_feats_trans, delta_lab_list)
     
     fig = plt.figure()
@@ -218,6 +217,7 @@ def main():
 
         all_list = []
         feat_trans = model.transform(feats)
+        print (len(feat_trans[0]))
         for i in range(len(feats)):
             all_list.append((feat_trans[i],labs[i]))
         
@@ -225,6 +225,11 @@ def main():
         print (MAP.MAP(test_list[:100], train_list, feat_dim=FLAG.pca_dim))
         
         return 
+
+    if FLAG.save_model :
+        s = joblib.dumps(model,)
+
+
 
     ax.legend(loc='upper right')
     plt.show()
@@ -241,13 +246,18 @@ if __name__ == '__main__':
         help='main PCA works on only the specific words')
     parser.add_argument('--sample_num',type=int, default=10,
         help='the number for sampling while plotting, '
-             'default = 10')
+             'default=10')
     parser.add_argument('--ave_num',type=int, default=10,
         help='the number for averaging over the word occurance and '
              'get the average feat vectors')
     parser.add_argument('--pca_dim',type=int,default=2,
         help='the dimension to project the transformed PCA features. '
              'default=2')
+    parser.add_argument('--save_model', type=bool, default=False,
+        help='save the PCA model or not. if True ,save if as'
+             'pca_model')
+    parser.add_argument('--model_fn',
+        help='the model name to save 
 
     FLAG = parser.parse_args()
 

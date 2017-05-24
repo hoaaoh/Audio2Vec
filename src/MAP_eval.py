@@ -28,7 +28,6 @@ def AP(query_embed, all_embed, answer_inds, feat_dim=100):
     np_all = np.array(all_embed).reshape(-1,feat_dim)
     answer = cosine_similarity(np_query, np_all).flatten()
 
-
     total_right = 0
     for i, answer_i in enumerate(answer):
         pair_list.append((answer_inds[i],answer_i))
@@ -39,6 +38,7 @@ def AP(query_embed, all_embed, answer_inds, feat_dim=100):
     # Calculate P@R (R-Precision)  
     ave_P = 0.
     right = 0.
+    total_right = min(10,total_right)
     for i in range(total_right):
         if pair_list[i][0] == 1:
             right += 1
@@ -82,7 +82,7 @@ def split_train_test(all_list):
     sampled_test = sorted(random.sample(range(len(all_list)),1000))
     test_list = []
     train_list = []
-    print (sampled_test)
+    # print (sampled_test)
     cnt = 0 
     for i in range(len(all_list)):
         if cnt < 1000 and i == sampled_test[cnt] :
