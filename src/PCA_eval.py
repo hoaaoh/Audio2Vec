@@ -3,6 +3,7 @@
 import numpy as np
 import random
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE 
 from sklearn.externals import joblib
 import random
 import matplotlib.pyplot as plt 
@@ -170,8 +171,8 @@ def average_over_words_num(feat_dic, target_list):
             feat_lists.append(l)
     return feat_lists
 
-def plot_addtional_words():
-
+def plot_additional_words(word_list, ):
+    
 
     return 
 

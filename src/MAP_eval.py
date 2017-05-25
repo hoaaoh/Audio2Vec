@@ -17,13 +17,8 @@ def AP(query_embed, all_embed, answer_inds, feat_dim=100):
     '''
     pair_list = []
     answer = []
-    '''
-    for i in all_embed:
-        dot = 0.
-        for k in range(len(query_embed)):
-            dot += query_embed[k]*i[k]
-        answer.append(dot)
-    '''
+
+
     np_query = np.array(query_embed).reshape(1,feat_dim)
     np_all = np.array(all_embed).reshape(-1,feat_dim)
     answer = cosine_similarity(np_query, np_all).flatten()
