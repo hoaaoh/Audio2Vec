@@ -25,8 +25,8 @@ def average_over_words(feat_dic):
                   feat_dic[word_ID] = shape(num_occur, feat_dim)
       returns:
         dic: a dict with dic[word_ID] = average over the word utterance.
-
     '''
+
     dic= {}
     for i in feat_dic:
         feat_dim = len(feat_dic[i][0])
@@ -40,12 +40,31 @@ def average_over_words(feat_dic):
     return dic 
 
 def PCA_transform(feats):
+    ''' Process PCA to transform feat 
+    args:
+      feat: feature list, shape = (feat_num, feat_dim)
+
+    returns:
+      feat_trans: the transformed feature list,
+        shape = (feat_num, pca_project_dim)
+      pca: the trained pca model
+    '''
+
     pca = PCA(n_components=FLAG.pca_dim)
     pca.fit(feats)
     feat_trans = pca.transform(feats)
     return feat_trans, pca
 
 def plot_with_anno(f_2d, list_dic, rev_dic, ax):
+    ''' Plot 2d figurewith annotation
+    args:
+      f_2d: feature 2d list, shape = (feat_num, 2)
+      list_dic: the list of annotations
+      rev_dic: the reverse dictionary with rev_dic[ID]=word
+      ax: the subplot of plt
+    returns:
+      ax: the updated subplot 
+    '''
     x = []
     y = []
     for i, f in enumerate(f_2d):
@@ -59,6 +78,15 @@ def plot_with_anno(f_2d, list_dic, rev_dic, ax):
     return ax
 
 def plot_with_anno_3d(f_3d, list_dic, rev_dic, ax):
+    ''' Plot 3d figure with annotation
+    args:
+      f_3d: feature 2d list, shape = (feat_num, 2)
+      list_dic: the list of annotations
+      rev_dic: the reverse dictionary with rev_dic[ID]=word
+      ax: the subplot of plt
+    returns:
+      ax: the updated subplot 
+    '''
     x = []
     y = []
     z = []
@@ -73,6 +101,18 @@ def plot_with_anno_3d(f_3d, list_dic, rev_dic, ax):
 
 
 def plot_all_color(f_2d, delta_lab, rev_dic, ax, word_color_dict):
+    ''' 2d plotting 
+    args:
+      f_2d: the 3d features  
+      delta_lab: the delta range and the label 
+      rev_dic: reverse dictionary, dic[ID] = word
+      ax: the subplot of the main plot
+      word_color_dict: a dictionary with 
+           key = word, value = color
+    returns:
+      ax: the updated subplot 
+    '''
+
     x = []
     y = []
     for i, f in enumerate(f_2d):
@@ -89,6 +129,18 @@ def plot_all_color(f_2d, delta_lab, rev_dic, ax, word_color_dict):
     return  ax
 
 def plot_all_color_3d(f_3d, delta_lab, rev_dic, ax, word_color_dict):
+    ''' 3d plotting 
+    args:
+      f_3d: the 3d features  
+      delta_lab: the delta range and the label 
+      rev_dic: reverse dictionary, dic[ID] = word
+      ax: the subplot of the main plot
+      word_color_dict: a dictionary with 
+           key = word, value = color
+    returns:
+      ax: the updated subplot 
+    '''
+
     x = []
     y = []
     z = []
@@ -138,6 +190,10 @@ def sampling(f,delta_lab):
 
 
 def extract_targets(all_feats, all_labs, targets):
+    ''' extract the target feats in all feats
+     
+
+    '''
     target_feat_dic = {}
     for ID in targets:
         target_feat_dic[ID] = []
@@ -148,6 +204,14 @@ def extract_targets(all_feats, all_labs, targets):
     return target_feat_dic
 
 def target_dic2list(feat_dic):
+    ''' Transform the feat_dic to target 
+    args:
+      feat_dic: feat_dic[word_ID] = feat lists, shape = (num_occur, feat_dim)
+      
+    returns:
+      feat_list: feat_list with shape [ total_feat_num, feat_dim ] 
+      delta_lab_list: the range of delta and the label list
+    '''
     feat_list = []
     delta_lab_list = []
     for i in feat_dic:
@@ -159,6 +223,15 @@ def target_dic2list(feat_dic):
     return feat_list, delta_lab_list
 
 def average_over_words_num(feat_dic, target_list):
+    ''' given the FLAG.ave_num, average over every FLAG.ave_num occurance 
+        of words and returns the feat list
+    args:
+      feat_dic: feat_dic[word_ID] = feat lists, shape = (num_occur, feat_dim)
+      target_list: the target word lists
+
+    retruns:
+      feat_lists: averaged 2-dimension matrix, [feat_num, feat_dim] 
+    '''
     num = FLAG.ave_num
     feat_lists = []
     for i in target_list:
@@ -171,10 +244,49 @@ def average_over_words_num(feat_dic, target_list):
             feat_lists.append(l)
     return feat_lists
 
-def plot_additional_words(word_list, ):
-    
+def extract_additional_words(feat_dic,word_list, word_color_dict ):
+    '''given the FLAG.ave_num, average over every FLAG.ave_num occurance
+       and each word contains only one avearage vector
+    args:
+      feat_dic: feat_dic[word_ID] = lists of feats, shape=(num_occur, feat_dim)
+      word_list: the plotting word list
+      word_color_dict: the plotting word color dictionary
 
-    return 
+    returns:
+      ave_feat_lb_color:
+    '''
+    ave_feat_lb_color = []
+    for i in word_list:
+        num_occur = min(FLAG.ave_num, len(feat_dic[i]))
+        feat_dim = len(feat_dic[i][0])
+        feat_list = [ 0. for i in range(feat_dim)]
+        for j in range(num_occur):
+            for k in range(feat_dim):
+                feat_list[k] += feat_dic[i][j][k]
+
+        for k in range(feat_dim):
+            feat_list[k] /= num_occur
+        
+        ave_feat_lb_color.append((feat_list, i, word_color_dict[i]))
+
+    return ave_feat_lb_color
+
+def plot_additional_words(ave_ftrans_lb_color,ax):
+    '''plot the additional words, i.e. not used for transforming words
+    args:
+      ave_ftrans_lb_color: the average feature list, 
+        each object in the list contains: 
+          ([ feat_dim ], label(word_id), color of the word)
+      ax: the subplot of the figure 
+
+    returns:
+      ax: the updated subplot
+    '''
+
+
+
+
+    return
 
 
 def main():
@@ -199,7 +311,6 @@ def main():
     all_feats, delta_lab_list = target_dic2list(test_feat_dic)
     all_feats_trans = model.transform(all_feats)
     ### samples number of word occurances  ###
-
 
     sampled_feats, sampled_delta_lab = sampling(all_feats_trans, delta_lab_list)
 
