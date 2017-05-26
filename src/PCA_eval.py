@@ -244,18 +244,18 @@ def average_over_words_num(feat_dic, target_list):
             feat_lists.append(l)
     return feat_lists
 
-def extract_additional_words(feat_dic,word_list, word_color_dict ):
+def extract_additional_words(feat_dic,word_list ):
     '''given the FLAG.ave_num, average over every FLAG.ave_num occurance
        and each word contains only one avearage vector
     args:
       feat_dic: feat_dic[word_ID] = lists of feats, shape=(num_occur, feat_dim)
       word_list: the plotting word list
-      word_color_dict: the plotting word color dictionary
 
     returns:
-      ave_feat_lb_color:
+      ave_feat: average feat of target word 
+      lb: label list each feat 
     '''
-    ave_feat_lb_color = []
+    ave_feat = [] ; lb = []
     for i in word_list:
         num_occur = min(FLAG.ave_num, len(feat_dic[i]))
         feat_dim = len(feat_dic[i][0])
@@ -267,11 +267,12 @@ def extract_additional_words(feat_dic,word_list, word_color_dict ):
         for k in range(feat_dim):
             feat_list[k] /= num_occur
         
-        ave_feat_lb_color.append((feat_list, i, word_color_dict[i]))
+        ave_feat.append(feat_list)
+        lb.append(i) 
+        
+    return ave_feat, lb
 
-    return ave_feat_lb_color
-
-def plot_additional_words(ave_ftrans_lb_color,ax):
+def plot_additional_words(ave_ftrans, lb, rev_dic,ax):
     '''plot the additional words, i.e. not used for transforming words
     args:
       ave_ftrans_lb_color: the average feature list, 
@@ -282,11 +283,42 @@ def plot_additional_words(ave_ftrans_lb_color,ax):
     returns:
       ax: the updated subplot
     '''
+    x = []
+    y = []
+    
+    for i in ave_ftrans:
+        x.append(i[0][0])
+        y.append(i[0][1])
+    ax.scatter(x, y, color='k', label='additional words')
+    for i in range(len(label_list)):
+        ax.annotate(rev_dic[lb[i]], (x[i],y[i]))
 
+    return ax
 
+def plot_additional_words_3d(ave_ftrans, lb, rev_dic,ax):
+    '''plot the additional words, i.e. not used for transforming words
+    args:
+      ave_ftrans_lb_color: the average feature list, 
+        each object in the list contains: 
+          ([ feat_dim ], label(word_id), color of the word)
+      ax: the subplot of the figure 
 
+    returns:
+      ax: the updated subplot
+    '''
+    x = []
+    y = []
+    z = []
+    
+    for i in ave_ftrans_lb_color:
+        x.append(i[0][0])
+        y.append(i[0][1])
+        z.append(i[0][2])
+    ax.scatter(x, y, z, color='k', label='additional words')
+    for i in range(len(label_list)):
+        ax.annotate(rev_dic[label_list[i]], (x[i],y[i],z[i]))
 
-    return
+    return ax
 
 
 def main():
@@ -346,7 +378,16 @@ def main():
         print (MAP.MAP(test_list[:100], train_list, feat_dim=FLAG.pca_dim))
         
         return 
-
+    ### get the words that not using for PCA ###
+    if FLAG.other_words != 'None':
+        other_target = reader.build_targets(FLAG.other_words,dic)
+        ave_feat, other_lb_list = extract_additional_words(feats, other_target)
+        ave_ftrans  = model.transform(ave_feat)
+        
+        if FLAG.pca_dim == 2:
+            plot_additional_words(ave_ftrans, other_lb_list)
+        else :
+            plot_additional_words_3d(ave_ftrans, other_lb_list)
 
     ax.legend(loc='upper right')
     plt.show()
@@ -361,6 +402,8 @@ if __name__ == '__main__':
         help='the dictionary of the label')
     parser.add_argument('target_words',
         help='main PCA works on only the specific words')
+    parser.add_argument('--other_words',type=str, default='None',
+        help='apply the PCA on the words not for training and then plot')
     parser.add_argument('--sample_num',type=int, default=10,
         help='the number for sampling while plotting, '
              'default=10')
