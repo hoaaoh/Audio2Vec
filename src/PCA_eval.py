@@ -4,7 +4,7 @@ import numpy as np
 import random
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE 
-from sklearn.externals import joblib
+from sklearn.externals import joblib 
 import random
 import matplotlib.pyplot as plt 
 from mpl_toolkits.mplot3d import Axes3D
@@ -191,8 +191,12 @@ def sampling(f,delta_lab):
 
 def extract_targets(all_feats, all_labs, targets):
     ''' extract the target feats in all feats
-     
-
+    args:
+      all_feats: 
+      all_labs:  
+      targets:
+    returns:
+      target_feat_dic:
     '''
     target_feat_dic = {}
     for ID in targets:
@@ -258,6 +262,7 @@ def extract_additional_words(feat_dic,word_list ):
     ave_feat = [] ; lb = []
     for i in word_list:
         num_occur = min(FLAG.ave_num, len(feat_dic[i]))
+        print (len(feat_dic[i]))
         feat_dim = len(feat_dic[i][0])
         feat_list = [ 0. for i in range(feat_dim)]
         for j in range(num_occur):
@@ -287,10 +292,10 @@ def plot_additional_words(ave_ftrans, lb, rev_dic,ax):
     y = []
     
     for i in ave_ftrans:
-        x.append(i[0][0])
-        y.append(i[0][1])
-    ax.scatter(x, y, color='k', label='additional words')
-    for i in range(len(label_list)):
+        x.append(i[0])
+        y.append(i[1])
+    ax.scatter(x, y, color='b', label='additional words')
+    for i in range(len(lb)):
         ax.annotate(rev_dic[lb[i]], (x[i],y[i]))
 
     return ax
@@ -310,16 +315,28 @@ def plot_additional_words_3d(ave_ftrans, lb, rev_dic,ax):
     y = []
     z = []
     
-    for i in ave_ftrans_lb_color:
-        x.append(i[0][0])
-        y.append(i[0][1])
-        z.append(i[0][2])
-    ax.scatter(x, y, z, color='k', label='additional words')
-    for i in range(len(label_list)):
-        ax.annotate(rev_dic[label_list[i]], (x[i],y[i],z[i]))
+    for i in ave_ftrans:
+        x.append(i[0])
+        y.append(i[1])
+        z.append(i[2])
+    ax.scatter(x, y, z, color='b', label='additional words')
+    for i in range(len(lb)):
+        ax.text(x[i],y[i],z[i],rev_dic[lb[i]])
 
     return ax
 
+def TSNE_transform(feats, dim):
+    ''' Process TSNE transforming 
+    args:
+      feats: feature list, shape = (feat_num, feat_dim)
+    returns:
+      feat_trans: the transformed feature list
+
+    '''
+    tsne = TSNE(n_components=dim)
+    feat_trans = tsne.fit_transform(feats)
+
+    return feat_trans
 
 def main():
     ### preprocessing ###
@@ -335,9 +352,11 @@ def main():
     
     ave_num_feat_lists = average_over_words_num(test_feat_dic, targets)
     ave_num_trans, model = PCA_transform(ave_num_feat_lists)
-
+    
     anno_list = [ i for i in ave_test_feat_dic ]
     ave_test_trans = model.transform(ave_test_feat_list)
+    
+    
 
     ### use the PCA model to transform only testing data ###
     all_feats, delta_lab_list = target_dic2list(test_feat_dic)
@@ -381,13 +400,14 @@ def main():
     ### get the words that not using for PCA ###
     if FLAG.other_words != 'None':
         other_target = reader.build_targets(FLAG.other_words,dic)
-        ave_feat, other_lb_list = extract_additional_words(feats, other_target)
+        extract_others = extract_targets(feats, labs, other_target)
+        ave_feat, other_lb_list = extract_additional_words(extract_others, other_target)
         ave_ftrans  = model.transform(ave_feat)
         
         if FLAG.pca_dim == 2:
-            plot_additional_words(ave_ftrans, other_lb_list)
+            plot_additional_words(ave_ftrans, other_lb_list, rev_dic, ax)
         else :
-            plot_additional_words_3d(ave_ftrans, other_lb_list)
+            plot_additional_words_3d(ave_ftrans, other_lb_list, rev_dic, ax)
 
     ax.legend(loc='upper right')
     plt.show()
