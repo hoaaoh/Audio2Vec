@@ -235,18 +235,24 @@ def average_over_words_num(feat_dic, target_list):
 
     retruns:
       feat_lists: averaged 2-dimension matrix, [feat_num, feat_dim] 
+      delta_lab_list: the range of delta and the label list
     '''
     num = FLAG.ave_num
     feat_lists = []
+    delta_lab_list = []
+    
     for i in target_list:
         iter_num = int(floor(float(len(feat_dic[i]))/num))
         feat_dim = len(feat_dic[i][0])
+        delta = 0
         for j in range(min(30,iter_num)):
             l = [0. for tmp in range(feat_dim)]
             for k in range(feat_dim):
                 l[k] += feat_dic[i][j][k]/num
             feat_lists.append(l)
-    return feat_lists
+            delta += 1
+        delta_lab_list.append((delta,i))
+    return feat_lists, delta_lab_list
 
 def extract_additional_words(feat_dic,word_list ):
     '''given the FLAG.ave_num, average over every FLAG.ave_num occurance
@@ -350,7 +356,7 @@ def main():
     ave_test_feat_dic = average_over_words(test_feat_dic)
     ave_test_feat_list = [ ave_test_feat_dic[i] for i in ave_test_feat_dic]
     
-    ave_num_feat_lists = average_over_words_num(test_feat_dic, targets)
+    ave_num_feat_lists, tmp_lab = average_over_words_num(test_feat_dic, targets)
     ave_num_trans, model = PCA_transform(ave_num_feat_lists)
     
     anno_list = [ i for i in ave_test_feat_dic ]

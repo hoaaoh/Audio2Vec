@@ -33,16 +33,17 @@ def main():
     
     ave_test_feat_dic = PCA.average_over_words(test_feat_dic)
     ave_test_feat_list = [ ave_test_feat_dic[i] for i in ave_test_feat_dic]
-    
     test_all_feats, test_all_delta_labs = PCA.target_dic2list(test_feat_dic)
-    sampled_feats, sampled_delta_lab = PCA.sampling(test_all_feats,
-        test_all_delta_labs)
 
+    ave_num_feats, ave_num_lab = PCA.average_over_words_num(test_feat_dic, targets)
+    #ave_num_feats, ave_num_lab = PCA.target_dic2list(ave_num_feat_lists)
+    #sampled_feats, sampled_delta_lab = PCA.sampling(test_all_feats,
+    #    test_all_delta_labs)
+    sampled_feats, _ = PCA.PCA_transform(ave_num_feats)
     ave_test_feat_trans = PCA.TSNE_transform(sampled_feats, FLAG.tsne_dim)
-
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax = PCA.plot_all_color(ave_test_feat_trans, sampled_delta_lab, rev_dic, ax, 
+    ax = PCA.plot_all_color(ave_test_feat_trans, ave_num_lab, rev_dic, ax, 
         word_color_dict)
     #ax = PCA.plot_with_anno( ave_test_feat_trans, anno_list, rev_dic, ax)
     #ax.legend(loc='upper right')
@@ -72,7 +73,7 @@ if __name__ == '__main__':
              'default=2')
     FLAG = parser.parse_args()
     PCA.FLAG = FLAG
-
+    PCA.FLAG.pca_dim = 20
 
     main()
 
