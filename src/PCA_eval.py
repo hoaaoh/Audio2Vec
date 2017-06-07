@@ -362,8 +362,6 @@ def main():
     anno_list = [ i for i in ave_test_feat_dic ]
     ave_test_trans = model.transform(ave_test_feat_list)
     
-    
-
     ### use the PCA model to transform only testing data ###
     all_feats, delta_lab_list = target_dic2list(test_feat_dic)
     all_feats_trans = model.transform(all_feats)
@@ -372,10 +370,10 @@ def main():
     sampled_feats, sampled_delta_lab = sampling(all_feats_trans, delta_lab_list)
 
     if FLAG.save_model :
-        s = joblib.dumps(model,FLAG.model_fn)
+        s = joblib.dump(model,FLAG.model_fn)
 
-    fig = plt.figure()
     if FLAG.pca_dim == 2:
+        fig = plt.figure()
         ### start plotting the average results ###
         ax = fig.add_subplot(111)
         ax = plot_with_anno(ave_test_trans, anno_list, rev_dic, ax)
@@ -384,6 +382,7 @@ def main():
             word_color_dict)
         
     elif FLAG.pca_dim ==3 :
+        fig = plt.figure()
         #### start plotting the 3D projections #### 
         ax = fig.add_subplot(111, projection='3d')
         ax = plot_with_anno_3d(ave_test_trans, anno_list, rev_dic, ax)

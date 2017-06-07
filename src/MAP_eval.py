@@ -2,6 +2,7 @@
 import numpy as np
 from operator import itemgetter
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import euclidean_distances
 import random
 import argparse
 
@@ -18,10 +19,10 @@ def AP(query_embed, all_embed, answer_inds, feat_dim=100):
     pair_list = []
     answer = []
 
-
     np_query = np.array(query_embed).reshape(1,feat_dim)
     np_all = np.array(all_embed).reshape(-1,feat_dim)
     answer = cosine_similarity(np_query, np_all).flatten()
+    # answer = euclidean_distances(np_query, np_all).flatten()
 
     total_right = 0
     for i, answer_i in enumerate(answer):
@@ -38,7 +39,11 @@ def AP(query_embed, all_embed, answer_inds, feat_dim=100):
         if pair_list[i][0] == 1:
             right += 1
             ave_P += right/(i+1) 
-    ave_P /= total_right
+    
+    if total_right==0:
+        ave_P = -1
+    else:
+        ave_P /= total_right
     return ave_P
 
 def transform_answer_index(all_list, target_answer):
@@ -63,13 +68,18 @@ def MAP(test_embed_label, db_embed_label, feat_dim=100):
     MAP = 0.
     db_embed = []
     db_label = []
+    zero_count= 0
     for i, embed_label in enumerate(db_embed_label):
         db_embed.append(embed_label[0])
         db_label.append(embed_label[1])
     for single_embed in test_embed_label:
         ans_inds = transform_answer_index(db_label, single_embed[1])
-        MAP += AP(single_embed[0],db_embed,ans_inds, feat_dim)
-    MAP /= len(test_embed_label)
+        ap = AP(single_embed[0],db_embed,ans_inds, feat_dim)
+        if ap == -1:
+            zero_count+=1
+        else:
+            MAP += ap
+    MAP /= len(test_embed_label) -zero_count
 
     return MAP
 
@@ -106,9 +116,9 @@ def read_list(filename):
     return return_list 
 
 def main():
-    test_list = read_list(work_dir+"/words/test_list")
-    train_list = read_list(work_dir+ "/words/train_list")
-    print (MAP(test_list[:100],train_list))
+    test_list = read_list(work_dir+"/md3_test")
+    train_list = read_list(work_dir+ "/md3_train")
+    print (MAP(test_list[:100],train_list, feat_dim=1000))
 
     return 
 

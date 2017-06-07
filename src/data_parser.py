@@ -43,3 +43,20 @@ def build_label_color_list(target_list, color_list):
         word_color_dict[target] = color_list[i%len(color_list)]
 
     return word_color_dict
+
+def write_feat_lab(filename, feats, labs, delimiter=' '):
+    ''' write a csv like file with feature list and label list
+    args:
+      filename: The output filename
+      feats: the feature list with (num_occur, feat_dim)
+      labs: the label list with length = num_occur
+      delimiter: the delimiter in csv file
+    '''
+    with open(filename,'w') as f:
+        for i, feat_list in enumerate(feats):
+            for j in feat_list:
+                f.write(str(j)+ delimiter)
+            f.write(str(labs[i])+'\n')
+
+    return 
+
