@@ -6,7 +6,8 @@ from sklearn.metrics.pairwise import euclidean_distances
 import random
 import argparse
 
-work_dir = "/home_local/hoa/Research/Interspeech2017/baseline"
+FLAG = None
+#work_dir = "/home_local/hoa/Research/Interspeech2017/baseline"
 def AP(query_embed, all_embed, answer_inds, feat_dim=100):
     '''Computes average precision of one single query 
     args:
@@ -116,13 +117,34 @@ def read_list(filename):
     return return_list 
 
 def main():
-    test_list = read_list(work_dir+"/md3_test")
-    train_list = read_list(work_dir+ "/md3_train")
-    print (MAP(test_list[:100],train_list, feat_dim=1000))
+    test_list = read_list(FLAG.query_fn)
+    train_list = read_list(FLAG.corpus_fn)
+    if len(test_list[0][0]) != len(train_list[0][0]):
+        raise NameError('The dimension between two files are not the same')
+    feat_dim = len(test_list[0][0])
+
+    print (MAP(test_list[:FLAG.test_num],train_list, feat_dim=feat_dim))
 
     return 
 
+def parse_opt():
+    parser = argparse.ArgumentParser(
+        description='To evaluate the MAP score between two files with vectors.')
+    parser.add_argument('query_fn',
+        metavar='<query filename>',
+        help='The filename of query file with feat and label')
+    parser.add_argument('corpus_fn',
+        metavar='<the database filename>',
+        help='The database filename with feat and label')
+    parser.add_argument('--test_num',type=int,default=100,
+        metavar='--test number',
+        help='The testing number for MAP')
+    return parser
+
 if __name__ == '__main__' :
+    parser=parse_opt()
+    FLAG=parser.parse_args()
+
     main()
 
 

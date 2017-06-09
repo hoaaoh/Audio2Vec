@@ -394,7 +394,7 @@ def main():
 
         all_list = []
         feat_trans = model.transform(feats)
-        print (len(feat_trans[0]))
+        # print (len(feat_trans[0]))
         for i in range(len(feats)):
             all_list.append((feat_trans[i],labs[i]))
         
