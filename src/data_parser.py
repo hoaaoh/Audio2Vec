@@ -4,15 +4,15 @@ import argparse
 import numpy as np
 import csv
 
-def read_csv_file(filename):
-    lab = []
+def read_csv_file(filename, delimiter=' '):
+    labs = []
     feats = []
     with open(filename, 'r') as f:
-        reader = csv.reader(f, delimiter=' ')
+        reader = csv.reader(f, delimiter=delimiter)
         for row in reader:
             feats.append(list(map(float,row[:-1])))
-            lab.append(int(row[-1]))
-    return feats, lab
+            labs.append(int(float(row[-1])))
+    return feats, labs
 
 def build_dic(filename):
     dic = {}
@@ -57,6 +57,23 @@ def write_feat_lab(filename, feats, labs, delimiter=' '):
             for j in feat_list:
                 f.write(str(j)+ delimiter)
             f.write(str(labs[i])+'\n')
+
+    return 
+
+def write_feat_in_lab_name(feat_dic, out_dir, delimiter=' '):
+    ''' write a label file with features 
+    args:
+      feat_dic: The dictionary with dic[lab]=shape(num_occur,feat_dim)
+      out_dir : The output directory of the generated features
+      delimiter:The csv file delimiter, default=' '
+    ''' 
+    
+    for i in feat_dic:
+        with open(out_dir+'/'+str(i),'a') as f:
+            for j in feat_dic[i]:
+                for k in range(len(j)-1):
+                    f.write(str(j[k])+delimiter)
+                f.write(str(j[len(j)-1])+ '\n')
 
     return 
 

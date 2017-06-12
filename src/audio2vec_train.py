@@ -486,9 +486,15 @@ def addParser():
     parser = argparse.ArgumentParser(prog="PROG", 
         description='Audio2vec Training Script')
     parser.add_argument('--init_lr',  type=float, default=0.1,
-        metavar='<initial learning rate>')
+        metavar='<--initial learning rate>')
     parser.add_argument('--decay_rate',type=int, default=1000,
         metavar='learning rate decay per batch epoch') 
+    parser.add_argument('--hidden_dim',type=int, default=100,
+        metavar='<--hidden dimension>',
+        help='The hidden dimension of a neuron')
+    parser.add_argument('--batch_size',type=int, default=500,
+        metavar='--<batch size>',
+        help='The batch size while training')
     parser.add_argument('log_dir', 
         metavar='<log directory>')
     parser.add_argument('model_dir', 
@@ -502,7 +508,11 @@ def main():
     train_fn_scp =  FLAG.feat_scp
     print (train_fn_scp)
     fn_list = build_filename_list(train_fn_scp)
-    train(fn_list, 500, 100)
+    train(fn_list, FLAG.batch_size, FLAG.hidden_dim)
+    with open(model_file+'/feat_dim','w') as f:
+        f.write(str(FLAG.hidden_dim))
+    with open(model_file+'/batch_size','w') as f:
+        f.write(str(FLAG.batch_size))
 
     return 
 

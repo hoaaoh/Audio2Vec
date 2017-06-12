@@ -102,7 +102,7 @@ def get_BN_feat(saver, total_loss, summary_writer, summary_op,labels, dec_memory
                 ### words is a tensor with shape (batch_size, 1) ###
                 ### memories are seq_len list with (batch, feat_dim) shape tensors ###
                 single_loss, words, memories = sess.run([total_loss, labels, dec_memory])
-                print(np.shape(memories))
+                ### print(np.shape(memories))
                 for i in range(len(words)):
                     word_id = words[i][0]
                     single_memory = memories[i]
@@ -115,12 +115,12 @@ def get_BN_feat(saver, total_loss, summary_writer, summary_op,labels, dec_memory
                             else:
                                 word_file.write('\n')
                             
-                print (single_loss)
+                # print (single_loss)
                 total_loss_value += single_loss
                 step += 1
             avg_loss = total_loss_value/num_iter
             print ('%s: average loss for eval = %.3f' % (datetime.now(),
-                avg_loss), end='\r')
+                avg_loss))
             summary = tf.Summary()
             summary.ParseFromString(sess.run(summary_op))
             summary.value.add(tag='eval loss', simple_value=avg_loss)
@@ -191,6 +191,15 @@ def parser_opt():
     parser.add_argument('word_dir',
         metavar='<word directory>',
         help='the directory where stores generated bottleneck features')
+    parser.add_argument('--dim',type=int,default=100,
+        metavar='<hidden layer dimension>',
+        help='The hidden layer dimension')
+    parser.add_argument('--batch_szie',type=int,default=500,
+        metavar='<--batch size>',
+        help='The batch size of the evaluation')
+    parser.add_argument('--test_num',type=int,default=63372,
+        metavar='<The testing number of each languages>',
+        help='The testing number of each languages')
     return parser 
         
 def main():
@@ -205,4 +214,7 @@ if __name__ == '__main__':
     model_dir = FLAG.model_dir
     log_dir = FLAG.log_dir
     word_dir = FLAG.word_dir
+    memory_dim = FLAG.dim
+    batch_size = FLAG.batch_size
+    NUM_EXAMPLES_PER_EPOCH_FOR_TEST  = FLAG.test_num
     main()
