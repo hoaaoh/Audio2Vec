@@ -120,6 +120,7 @@ def main():
     test_list = read_list(FLAG.query_fn)
     train_list = read_list(FLAG.corpus_fn)
     if len(test_list[0][0]) != len(train_list[0][0]):
+        print (len(test_list[0][0]), len(train_list[0][0]))
         raise NameError('The dimension between two files are not the same')
     feat_dim = len(test_list[0][0])
 

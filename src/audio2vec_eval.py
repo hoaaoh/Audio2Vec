@@ -194,7 +194,7 @@ def parser_opt():
     parser.add_argument('--dim',type=int,default=100,
         metavar='<hidden layer dimension>',
         help='The hidden layer dimension')
-    parser.add_argument('--batch_szie',type=int,default=500,
+    parser.add_argument('--batch_size',type=int,default=500,
         metavar='<--batch size>',
         help='The batch size of the evaluation')
     parser.add_argument('--test_num',type=int,default=63372,

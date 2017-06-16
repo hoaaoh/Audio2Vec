@@ -6,7 +6,9 @@ import time
 from math import floor
 from datetime import datetime 
 from tensorflow.contrib.rnn.python.ops import core_rnn_cell
+
 # from tensorflow.contrib.legacy_seq2seq.python.ops import seq2seq
+
 import seq2seq 
 from tensorflow.python.client import timeline
 from tensorflow.python.ops import math_ops
