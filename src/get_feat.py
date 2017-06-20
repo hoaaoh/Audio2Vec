@@ -61,6 +61,8 @@ def read_and_save_feat(filename, classify_dic, frame_num_list, path, feat_dim):
                 if ID not in classify_dic:
                     continue
                 for start, cont, word_id in classify_dic[ID]:
+                    if word_id == 0:
+                        continue
                     cls = classify(int(cont),frame_num_list)
                     if cls != 50 :
                         continue
@@ -74,6 +76,7 @@ def read_and_save_feat(filename, classify_dic, frame_num_list, path, feat_dim):
                         np_new_frames = np.reshape(np.array(new_frames),-1)
                         np_new_frames = np.append(np_new_frames,[word_id])
                     #print (np_new_frames[0])
+                    
                     with open(path+'/'+str(cls)+'/'+str(int(counter_dic[cls]/10000)) + '.ark','a') as csvfile:
                         counter_dic[cls] += 1
                         for i in range(len(np_new_frames)):

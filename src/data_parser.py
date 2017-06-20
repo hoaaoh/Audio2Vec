@@ -77,3 +77,20 @@ def write_feat_in_lab_name(feat_dic, out_dir, delimiter=' '):
 
     return 
 
+def build_lexicon(fn, word_dic):
+    ''' build the lexicon map 
+    args:
+      fn: the lexicon file name
+    return:
+      lexicon_dic: the lexicon dictionary
+        with lexicon_dic[word_id] = list of phonemes
+    '''
+    lexicon_dic = {}
+    with open(fn,'r') as f:
+        for line in f:
+            line_sp = line.rstrip().split(' ')
+            lexicon_dic[word_dic[line_sp[0]]] = []
+            for i in range(1,len(line_sp)):
+                lexicon_dic[word_dic[line_sp[0]]].append(line_sp[i])
+
+    return  lexicon_dic
