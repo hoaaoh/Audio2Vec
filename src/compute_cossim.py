@@ -80,9 +80,19 @@ def gen_similarity_average(q_feats,q_labs, d_feats, d_labs, lex_dic):
 def main():
     word_dic,word_rev_dic = dp.build_dic(FLAG.word_dic)
     query_feats, query_labs = dp.read_csv_file(FLAG.test_fn)
+    
+    data_feats, data_labs = dp.read_csv_file(FLAG.train_fn)
+    tmp = np.array(query_feats + data_feats)
+    tmp_p = tmp -np.mean(np.array(tmp),0)
+    tmp_list = tmp_p.tolist()
+    query_feats = tmp_list[:len(query_feats)]
+    data_feats = tmp_list[len(query_feats):]
+
+    dp.write_feat_lab(FLAG.test_fn + '_normed', query_feats, query_labs)
+    dp.write_feat_lab(FLAG.train_fn + '_normed', data_feats, data_labs)
+
     query_feats = query_feats[:100]
     query_labs = query_labs[:100]
-    data_feats, data_labs = dp.read_csv_file(FLAG.train_fn)
     data_feats = data_feats[:10000]
     data_labs = data_labs[:10000]
     lex_dic =  dp.build_lexicon(FLAG.lexicon, word_dic)

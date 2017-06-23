@@ -409,7 +409,7 @@ def train(fn_list,batch_size, memory_dim, seq_len=50, feat_dim=39):
                 #num_examples_per_step = batch_size
                 #tl = timeline.Timeline(run_metadata.step_stats)
                 #ctf = tl.generate_chrome_trace_format(show_memory=True)
-                if step % 100 == 0:
+                if step % 1000 == 0:
                     ckpt = model_file + '/model.ckpt'
                     summary_str = sess.run(summary_op,feed_dict={learning_rate:
                         feed_lr})
@@ -426,63 +426,6 @@ def train(fn_list,batch_size, memory_dim, seq_len=50, feat_dim=39):
         coord.join(threads)
         summary_writer.flush()
     return
-
-def test_feed(fn_list,batch_size, memory_dim, seq_len=50, feat_dim=39):
-    """ Training seq2seq for number of steps."""
-    with tf.Graph().as_default():
-        # global_step = tf.Variable(0, trainable=False)
-        # get examples and labels for seq2seq #
-        examples, labels = batch_pipeline(fn_list, batch_size, feat_dim, seq_len)
-
-        # Build and initialization operation to run below
-        init = tf.global_variables_initializer()
-        
-        # Start running operations on the Graph.
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
-        sess.run(init)
-        sess.graph.finalize()
-        # Start the queue runners.
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-        
-        summary_writer = tf.summary.FileWriter(log_file,sess.graph)
-
-        ### restore the model ###
-        ckpt = tf.train.get_checkpoint_state(model_file)
-        global_step = 0
-        if ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)
-            global_step = \
-              int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
-        else:
-            print ('No checkpoint file found.')
-        print ("Model restored.")
-        print ("Start batch training.")
-        feed_lr = INITIAL_LEARNING_RATE
-        ### start training ###
-        for step in range(global_step, MAX_STEP):
-            try:
-                
-                start_time = time.time()
-                _ = sess.run([examples,labels])
-                
-                duration = time.time() - start_time
-                example_per_sec = batch_size / duration
-                epoch = ceil(NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / batch_size)
-                format_str = ('%s: epoch %d, LR:%.7f, step %d, ( %.1f examples/sec;'
-                    ' %.3f sec/batch)')
-                
-                print (format_str % (datetime.now(), epoch, feed_lr, step,
-                    example_per_sec, float(duration)))
-                
-                
-            except tf.errors.OutOfRangeError:
-                break
-        coord.request_stop()
-        coord.join(threads)
-        summary_writer.flush()
-    return
-
 
 def addParser():
     parser = argparse.ArgumentParser(prog="PROG", 
