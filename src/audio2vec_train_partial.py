@@ -57,9 +57,9 @@ def keep_train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39):
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         
-        summary_writer = tf.summary.FileWriter(log_file,sess.graph)
+        summary_writer = tf.summary.FileWriter(FLAG.log_dir,sess.graph)
         # model restoring #
-        ckpt = tf.train.get_checkpoint_state(model_file)
+        ckpt = tf.train.get_checkpoint_state(FLAG.model_dir)
         global_step = 0
         if ckpt and ckpt.model_checkpoint_path:
             saver.restore(sess, ckpt.model_checkpoint_path)
@@ -71,7 +71,7 @@ def keep_train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39):
         print ("Start batch training.")
         feed_lr = FLAG.init_lr
         ### start training ###
-        for step in range(0, FLAG.max_step):
+        for step in range(global_step, FLAG.max_step):
             try:
                 start_time = time.time()
                 _, loss_value = sess.run([train_op, 
@@ -79,7 +79,7 @@ def keep_train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39):
                 
                 duration = time.time() - start_time
                 example_per_sec = batch_size/duration
-                epoch = floor(batch_size * step/FLAG.num_ex)
+                epoch = math.floor(batch_size * step/FLAG.num_ex)
                 format_str = ('%s: epoch %d, step %d, LR %.5f, loss = %.2f ( %.1f examples/sec;'
                     ' %.3f sec/batch)')
                 
@@ -91,7 +91,7 @@ def keep_train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39):
                 #tl = timeline.Timeline(run_metadata.step_stats)
                 #ctf = tl.generate_chrome_trace_format(show_memory=True)
                 if step % 200 == 0:
-                    ckpt = model_file + '/model.ckpt'
+                    ckpt = FLAG.model_dir + '/model.ckpt'
                     summary_str = sess.run(summary_op,feed_dict={learning_rate:
                         feed_lr})
                     saver.save(sess, ckpt, global_step=step)
@@ -116,7 +116,7 @@ def parser_opt():
         metavar='<--initial learning rate>')
     parser.add_argument('--num_ex',type=int,default=40000,
         metavar='<--number of examples in the language>')
-    parser.add_argument('--max_step',type=int,default=10000,
+    parser.add_argument('--max_step',type=int,default=70000,
         metavar='<--number of training epoch with pretrained model>')
     parser.add_argument('--decay_rate',type=int, default=1000,
         metavar='learning rate decay per batch epoch') 
@@ -138,8 +138,8 @@ def parser_opt():
 
 def main():
     fn_list = \
-    audio2vec.build_filename_list(FLAG.file_scp)
-    #BN_evaluation(fn_list)
+    audio2vec.build_filename_list(FLAG.feat_scp)
+    keep_train(fn_list, FLAG.batch_size, FLAG.hidden_dim)
     return 
 
 if __name__ == '__main__':
