@@ -4,6 +4,7 @@ import data_parser as dp
 import gen_len as gl
 import argparse 
 from math import ceil
+from math import floor
 import numpy as np
 
 FLAG = None
@@ -25,17 +26,25 @@ def naive_encoder(feats, lens):
 
     NE_feats = []
     dim = FLAG.feat_dim
+    ### divide into 10 parts ###
     for i, feat in enumerate(feats):
         NE_single_feat = []
         single_len = lens[i] 
-        one_third = int(ceil(float(single_len)/3))
-        two_third =  2*one_third
-        NE_single_feat.extend(average_over_num(feat[:one_third*dim]))
-        NE_single_feat.extend(average_over_num(feat[one_third*dim:
-                                                    two_third*dim]))
-        NE_single_feat.extend(average_over_num(feat[two_third*dim:single_len*dim]))
+        one_tenth = int(ceil(float(single_len)/6))
+        for j in range(0,5):
+            NE_single_feat.extend(average_over_num(
+                feat[one_tenth*j*dim:one_tenth*(j+1)*dim]))
+        NE_single_feat.extend(average_over_num(
+            feat[one_tenth*5*dim:]))
+
+        #one_third = int(ceil(float(single_len)/3))
+        #two_third =  2*one_third
+        #NE_single_feat.extend(average_over_num(feat[:one_third*dim]))
+        #NE_single_feat.extend(average_over_num(feat[one_third*dim:
+        #                                            two_third*dim]))
+        #NE_single_feat.extend(average_over_num(feat[two_third*dim:single_len*dim]))
         NE_feats.append(NE_single_feat)
-        if dim *3 != len(NE_single_feat):
+        if dim * 6 != len(NE_single_feat):
             print (len(NE_single_feat))
             print ("dimension not the same")
             break

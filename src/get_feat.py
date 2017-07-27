@@ -64,8 +64,8 @@ def read_and_save_feat(filename, classify_dic, frame_num_list, path, feat_dim):
                     if word_id == 0:
                         continue
                     cls = classify(int(cont),frame_num_list)
-                    if cls != 50 :
-                        continue
+                    #if cls != 50 :
+                    #    continue
                     new_frames = [ temp_list[i] for i in \
                         range(int(start),int(start)+int(cont))]
                     ### padding zero ###
@@ -90,7 +90,7 @@ def read_and_save_feat(filename, classify_dic, frame_num_list, path, feat_dim):
 
 def main():
     
-    classify_list = [ 30, 50, 100, 200]
+    classify_list = [30, 50, 100, 200]
     path=FLAG.store_path
     mkdir(classify_list, path)
     classify_dic = read_classify_list(FLAG.prons)

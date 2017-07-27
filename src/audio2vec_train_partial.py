@@ -90,7 +90,7 @@ def keep_train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39):
                 #num_examples_per_step = batch_size
                 #tl = timeline.Timeline(run_metadata.step_stats)
                 #ctf = tl.generate_chrome_trace_format(show_memory=True)
-                if step % 200 == 0:
+                if step % 200 == 0 or step == FLAG.max_step-1:
                     ckpt = FLAG.model_dir + '/model.ckpt'
                     summary_str = sess.run(summary_op,feed_dict={learning_rate:
                         feed_lr})
