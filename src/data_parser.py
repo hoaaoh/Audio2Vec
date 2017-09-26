@@ -19,7 +19,7 @@ def build_dic(filename):
     rev_dic = {}
     with open(filename,'r') as f:
         for line in f:
-            word, ID= line.rstrip().split()
+            word, ID= line.rstrip().split(' ')
             dic[word] = int(ID)
             rev_dic[int(ID)] = word
 

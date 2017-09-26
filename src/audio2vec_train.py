@@ -387,9 +387,10 @@ def train(fn_list,batch_size, memory_dim, seq_len=50, feat_dim=39):
             print ('No checkpoint file found.')
         print ("Model restored.")
         print ("Start batch training.")
-        feed_lr = INITIAL_LEARNING_RATE
+        #feed_lr = INITIAL_LEARNING_RATE
+        feed_lr = INITIAL_LEARNING_RATE*pow(LEARNING_RATE_DECAY_FACTOR,int(floor(global_step/NUM_EPOCHS_PER_DECAY)))
         ### start training ###
-        for step in range(global_step, MAX_STEP):
+        for step in range(global_step, MAX_STEP+1):
             try:
                 
                 start_time = time.time()
@@ -410,7 +411,7 @@ def train(fn_list,batch_size, memory_dim, seq_len=50, feat_dim=39):
                 #num_examples_per_step = batch_size
                 #tl = timeline.Timeline(run_metadata.step_stats)
                 #ctf = tl.generate_chrome_trace_format(show_memory=True)
-                if step % 1000 == 0:
+                if step % 2000 == 0:
                     ckpt = model_file + '/model.ckpt'
                     summary_str = sess.run(summary_op,feed_dict={learning_rate:
                         feed_lr})
@@ -441,6 +442,9 @@ def addParser():
     parser.add_argument('--batch_size',type=int, default=500,
         metavar='--<batch size>',
         help='The batch size while training')
+    parser.add_argument('--max_step', type=int, default=80000,
+        metavar='--<max step>',
+        help='The max step for training')
     parser.add_argument('log_dir', 
         metavar='<log directory>')
     parser.add_argument('model_dir', 
@@ -469,7 +473,8 @@ if __name__ == '__main__':
     NUM_EPOCHS_PER_DECAY = FLAG.decay_rate
     log_file = FLAG.log_dir
     model_file = FLAG.model_dir
-    
+    MAX_STEP = FLAG.max_step
+
     main()
 
 

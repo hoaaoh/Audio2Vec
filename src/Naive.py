@@ -30,12 +30,12 @@ def naive_encoder(feats, lens):
     for i, feat in enumerate(feats):
         NE_single_feat = []
         single_len = lens[i] 
-        one_tenth = int(ceil(float(single_len)/6))
-        for j in range(0,5):
+        one_tenth = int(floor(float(single_len)/FLAG.part_num))
+        for j in range(0,FLAG.part_num-1):
             NE_single_feat.extend(average_over_num(
                 feat[one_tenth*j*dim:one_tenth*(j+1)*dim]))
         NE_single_feat.extend(average_over_num(
-            feat[one_tenth*5*dim:]))
+            feat[one_tenth*(FLAG.part_num-1)*dim:]))
 
         #one_third = int(ceil(float(single_len)/3))
         #two_third =  2*one_third
@@ -44,7 +44,7 @@ def naive_encoder(feats, lens):
         #                                            two_third*dim]))
         #NE_single_feat.extend(average_over_num(feat[two_third*dim:single_len*dim]))
         NE_feats.append(NE_single_feat)
-        if dim * 6 != len(NE_single_feat):
+        if dim * FLAG.part_num != len(NE_single_feat):
             print (len(NE_single_feat))
             print ("dimension not the same")
             break
@@ -93,6 +93,9 @@ def parse_opt():
     parser.add_argument('--feat_dim',type=int,default=39,
         metavar='<--feature dimension>',
         help='The feature dimension')
+    parser.add_argument('--part_num',type=int, default=10,
+        metavar='<--the part number>',
+        help='The divide part number')
     return parser
 
 

@@ -30,7 +30,7 @@ feat_dim = 39
 NUM_EXAMPLES_PER_EPOCH_FOR_TEST = 63372
 
 
-def eval_once(saver, total_loss, summary_writer, summary_op):
+def eval_once(saver, total_loss, summary_writer, summary_op, enc_inp, dec_output):
     with tf.Session() as sess:
         ckpt = tf.train.get_checkpoint_state(model_dir)
         if ckpt and ckpt.model_checkpoint_path:
@@ -56,7 +56,7 @@ def eval_once(saver, total_loss, summary_writer, summary_op):
             step = 0
             total_loss_value = 0.
             while step < num_iter and not coord.should_stop():
-                single_loss = sess.run([total_loss])
+                single_loss, inputs, outputs= sess.run([total_loss, enc_inp, dec_output])
                 print (single_loss)
                 total_loss_value += single_loss[0]
                 step += 1
@@ -148,6 +148,31 @@ def BN_evaluation(fn_list):
         summary_writer = tf.summary.FileWriter(log_dir + '/BN', g)
         get_BN_feat(saver, total_loss, summary_writer, summary_op, labels,
             enc_memory)
+        return 
+
+def evaluate_and_out(fn_list):
+    """ Evaluation """
+    with tf.Graph().as_default() as g:
+        # Get evaluation sequences #
+        examples, labels = audio2vec.batch_pipeline(fn_list, batch_size,
+            feat_dim, seq_len)
+        # build a graph that computes the results #
+        dec_out, enc_memory = audio2vec.inference(examples, batch_size, memory_dim, seq_len,
+            feat_dim)
+        # calculate loss 
+        total_loss = audio2vec.loss(dec_out, examples, seq_len, batch_size, feat_dim)
+        
+        # Create a saver.
+        saver = tf.train.Saver(tf.all_variables())
+
+        # Build the summary operation based on the TF collection of Summaries.
+        summary_op =  tf.summary.merge_all()
+
+        summary_writer = tf.summary.FileWriter(log_dir + '/eval', g)
+
+        #while True:
+        eval_once(saver, total_loss, summary_writer, summary_op,examples, dec_out)
+        time.sleep(60*5)
         return 
 
 
