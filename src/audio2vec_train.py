@@ -160,7 +160,8 @@ def inference(examples,batch_size, memory_dim, seq_len, feat_dim):
     ### these two calls defined main cell in seq2seq and seq2seq model ###
     cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
 
-    dec_outputs, enc_memory, dec_memory = seq2seq.basic_rnn_seq2seq_with_bottle_memory(examples, dec_inp, cell)
+    dec_outputs, enc_memory, dec_memory = \
+    seq2seq.stack_rnn_seq2seq_with_bottle_memory(examples, dec_inp, cell)
     ######################################################################
     
     dec_reshape = tf.transpose(tf.reshape(dec_outputs, (seq_len*batch_size,\
