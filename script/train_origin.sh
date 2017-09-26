@@ -2,9 +2,9 @@
 
 [ -f path.sh ] && . ./path.sh
 
-if [ $# != 4 ] ; then 
-  echo "usage: train_origin.sh <feat_dir> <hidden_dim> <model_dir> <log_dir>"
-  echo "e.g. train_origin.sh ./feat ./model ./logs"
+if [ $# != 6 ] ; then 
+  echo "usage: train_origin.sh <feat_dir> <hidden_dim> <model_dir> <log_dir> <GPU DEVICE> <MAX TRAINING STEP>"
+  echo "e.g. train_origin.sh ./feat ./model ./logs 1 80000"
   echo "The feat dir should conatin:"
   echo "cmvned_feats.ark all.scp all_prons words.txt"
 fi 
@@ -13,6 +13,7 @@ feat_dir=$1
 dim=$2
 model_dir=$3/$dim
 log_dir=$4/$dim
+export CUDA_VISIBLE_DEVICES=$5
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
 
@@ -65,8 +66,8 @@ then
 fi 
 
 ### training ###
-export CUDA_VISIBLE_DEVICES=1
-audio2vec_train.py --init_lr=1 --decay_rate=500 --hidden_dim=$dim \
+#export CUDA_VISIBLE_DEVICES=1
+audio2vec_train.py --init_lr=1 --decay_rate=500 --hidden_dim=$dim --max_step=$6\
   $tf_log_dir/$dim $tf_model_dir/$dim $feat_dir/train_AE.scp 2> $tf_log_dir/train.log
 
 ### echo $dim > $tf_model_dir/$feat_dim/feat_dim
