@@ -70,7 +70,7 @@ def stack_rnn_seq2seq_with_bottle_memory(encoder_inputs,
       dec_state: The state of each decoder cell in the final time-step.
         This is a 2D Tensor of shape [batch_size x cell.state_size]
     """
-    with variable_scope.variable_scope(scopre or "stack_rnn_enc_1"):
+    with variable_scope.variable_scope(scope or "stack_rnn_enc_1"):
         enc_cell = copy.copy(cell)
         enc_output, enc_state = core_rnn.static_rnn(enc_cell, encoder_inputs,
             dtype=dtype)
