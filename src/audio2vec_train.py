@@ -24,6 +24,7 @@ NUM_EPOCHS_PER_DECAY= 1000.0
 INITIAL_LEARNING_RATE= 0.1
 LEARNING_RATE_DECAY_FACTOR = 0.95
 MAX_STEP=60000
+STACK_NUM=3
 # NUM_UP_TO=100
 FLAG = None
 
@@ -161,7 +162,8 @@ def inference(examples,batch_size, memory_dim, seq_len, feat_dim):
     cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
 
     dec_outputs, enc_memory, dec_memory = \
-    seq2seq.stack_rnn_seq2seq_with_bottle_memory(examples, dec_inp, cell)
+    seq2seq.stack_rnn_seq2seq_with_bottle_memory(examples, dec_inp, cell,
+        STACK_NUM)
     ######################################################################
     
     dec_reshape = tf.transpose(tf.reshape(dec_outputs, (seq_len*batch_size,\
@@ -234,7 +236,6 @@ def memory_regularizer(enc_mem, batch_size, seq_len, feat_dim):
       reg: the regularization term 
     '''
     
-
 
     return 
 
@@ -439,12 +440,16 @@ def addParser():
     parser.add_argument('--hidden_dim',type=int, default=100,
         metavar='<--hidden dimension>',
         help='The hidden dimension of a neuron')
+    parser.add_argument('--stack_num',type=int, default=3,
+        metavar='<rnn stack number>',
+        help='The number of rnn stacking')
     parser.add_argument('--batch_size',type=int, default=500,
         metavar='--<batch size>',
         help='The batch size while training')
     parser.add_argument('--max_step', type=int, default=80000,
         metavar='--<max step>',
         help='The max step for training')
+    
     parser.add_argument('log_dir', 
         metavar='<log directory>')
     parser.add_argument('model_dir', 
@@ -474,7 +479,7 @@ if __name__ == '__main__':
     log_file = FLAG.log_dir
     model_file = FLAG.model_dir
     MAX_STEP = FLAG.max_step
-
+    STACK_NUM = FLAG.stack_num
     main()
 
 
