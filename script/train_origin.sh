@@ -2,9 +2,9 @@
 
 [ -f path.sh ] && . ./path.sh
 
-if [ $# != 6 ] ; then 
+if [ $# != 7 ] ; then 
   echo "usage: train_origin.sh <feat_dir> <hidden_dim> <model_dir> <log_dir> <GPU DEVICE> <MAX TRAINING STEP>"
-  echo "e.g. train_origin.sh ./feat ./model ./logs 1 80000"
+  echo "e.g. train_origin.sh ./feat 400 ./model ./logs 1 80000"
   echo "The feat dir should conatin:"
   echo "cmvned_feats.ark all.scp all_prons words.txt"
 fi 
