@@ -17,6 +17,8 @@ export CUDA_VISIBLE_DEVICES=$5
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
 
+mkdir -p $model_dir $log_dir $tf_model_dir $tf_log_dir
+
 [ -f $feat_dir/cmvned_feats.ark ] || exit 1
 [ -f $feat_dir/all_prons ] || exit 1
 
@@ -64,6 +66,8 @@ then
   cat $tmp | tail -n 2 > $feat_dir/corpus_NE.scp
   rm $tmp
 fi 
+
+
 
 ### training ###
 #export CUDA_VISIBLE_DEVICES=1
