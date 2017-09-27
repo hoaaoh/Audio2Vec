@@ -72,7 +72,7 @@ fi
 ### training ###
 #export CUDA_VISIBLE_DEVICES=1
 audio2vec_train.py --init_lr=1 --decay_rate=500 --hidden_dim=$dim --max_step=$6 \
-  $tf_log_dir/$dim $tf_model_dir/$dim $feat_dir/train_AE.scp 2> $tf_log_dir/train.log
+  $tf_log_dir $tf_model_dir $feat_dir/train_AE.scp 2> $tf_log_dir/train.log
 
 ### echo $dim > $tf_model_dir/$feat_dim/feat_dim
 
