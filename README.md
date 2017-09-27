@@ -22,5 +22,6 @@ elemental connection of sequence-to-sequence structure, please visit `src/seq2se
 
 
 Starts training by using `script/train\_origin.sh`
+
 Evaluation by using `src/audio2vec_eval.py`
 
