@@ -1,5 +1,4 @@
 # Audio2Vec
-==============
 
 You have to get the "prons.n.gz" from kaldi/get\_prons.sh and concate the files
 together and named as all\_prons, also gets the relative features as
@@ -21,4 +20,7 @@ You may change the model structure by modifying the function `inference`, `loss`
 in `src/audio2vec\_train.py`, if you want to modify the cell or the
 elemental connection of sequence-to-sequence structure, please visit `src/seq2seq.py`
 
+
+Starts training by using `script/train\_origin.sh`
+Evaluation by using `src/audio2vec_eval.py`
 
