@@ -2,7 +2,7 @@
 
 [ -f path.sh ] && . path.sh || exit 1
 
-if [ $# != 5 ];
+if [ $# != 4 ];
 then
     echo "usage: ./script/train_stckrnn.sh <STACK NUM> <HIDDEN DIM> <BATCHSIZE> <GPU_NUM>"
     exit 1
