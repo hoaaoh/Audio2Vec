@@ -20,7 +20,7 @@ export CUDA_VISIBLE_DEVICES=$4
 mkdir -p $log_dir/$hidden_dim $model_dir/$hidden_dim
 mkdir -p $log_dir/$hidden_dim/"$stack_num"_"$batch_size" $model_dir/$hidden_dim/"$stack_num"_"$batch_size"
 log_dir=$log_dir/$hidden_dim/"$stack_num"_"$batch_size"
-feat_dir=$model_dir/$hidden_dim/"$stack_num"_"$batch_size"
+model_dir=$model_dir/$hidden_dim/"$stack_num"_"$batch_size"
 audio2vec_train.py --init_lr=1 --decay_rate=1000 --hidden_dim=$hidden_dim --stack_num=$stack_num --batch_size=$batch_size --max_step=100000  \
 	$log_dir $model_dir $feat_dir/train_AE.scp
 
