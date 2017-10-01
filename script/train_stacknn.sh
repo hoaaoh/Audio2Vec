@@ -2,13 +2,12 @@
 
 [ -f path.sh ] && . path.sh || exit 1
 
-if [ $# != 3 ];
+if [ $# != 5 ];
 then
     echo "usage: ./script/train_stckrnn.sh <STACK NUM> <HIDDEN DIM> <BATCHSIZE> <GPU_NUM>"
     exit 1
 fi
 
-dim=100
 log_dir=/home_local/hoa/exp/log
 model_dir=/home_local/hoa/exp/model
 feat_dir=/home_local/hoa/libri_feat
