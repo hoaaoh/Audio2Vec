@@ -451,13 +451,11 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
                 example_per_sec = batch_size / duration
                 epoch = floor(batch_size * step / NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
 
-                '''
                 format_str = ('%s: epoch %d, step %d, LR %.5f, loss = %.2f ( %.1f examples/sec;'
                     ' %.3f sec/batch)')
                 
                 print (format_str % (datetime.now(), epoch, step, feed_lr, loss_value,
                     example_per_sec, float(duration)), end='\r')
-                '''
                 # create time line #
                 #num_examples_per_step = batch_size
                 #tl = timeline.Timeline(run_metadata.step_stats)
