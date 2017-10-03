@@ -137,6 +137,8 @@ def BN_evaluation(fn_list):
     with tf.Graph().as_default() as g:
         examples, labels = audio2vec.batch_pipeline(fn_list, batch_size,
             feat_dim, seq_len)
+        examples = examples[0]
+        labels = labels[0]
         
         dec_out, enc_memory = audio2vec.inference(examples, batch_size,
             memory_dim, seq_len, feat_dim)
@@ -157,6 +159,8 @@ def evaluate(fn_list):
         # Get evaluation sequences #
         examples, labels = audio2vec.batch_pipeline(fn_list, batch_size,
             feat_dim, seq_len)
+        examples = examples[0]
+        labels = labels[0]
         # build a graph that computes the results #
         dec_out, enc_memory = audio2vec.inference(examples, batch_size, memory_dim, seq_len,
             feat_dim)
