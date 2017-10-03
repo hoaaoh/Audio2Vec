@@ -360,7 +360,6 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         with tf.variable_scope('reconstruction_and_speaker') as scope_1:
             # training example
             dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
-            print (enc_memory.get_shape())
             s_enc = tf.slice(enc_memory, [0, 0], [batch_size, split_enc])
             p_enc = tf.slice(enc_memory, [0, split_enc], [batch_size, memory_dim-split_enc])
             scope_1.reuse_variables()
@@ -392,9 +391,11 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
 
             phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos) \
                           + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
+            phonetic_loss = tf.reduce_sum(phonetic_loss)
 
         # calculate loss
-        total_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) + speaker_loss + phonetic_loss
+        total_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
+        total_loss = total_loss + speaker_loss + phonetic_loss
         ########
         # TODO/#
         ########
