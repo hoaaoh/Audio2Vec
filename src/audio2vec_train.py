@@ -16,6 +16,7 @@ from six.moves import xrange
 import argparse
 
 from flip_gradient import flip_gradient
+from tqdm import tqdm
 
 
 log_file = None
@@ -438,7 +439,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         print ("Start batch training.")
         feed_lr = INITIAL_LEARNING_RATE*pow(LEARNING_RATE_DECAY_FACTOR,int(floor(global_step/NUM_EPOCHS_PER_DECAY)))
         ### start training ###
-        for step in range(global_step, MAX_STEP):
+        for step in tqdm(range(global_step, MAX_STEP)):
             try:
                 
                 start_time = time.time()
@@ -449,12 +450,13 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
                 example_per_sec = batch_size / duration
                 epoch = floor(batch_size * step / NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
 
+                '''
                 format_str = ('%s: epoch %d, step %d, LR %.5f, loss = %.2f ( %.1f examples/sec;'
                     ' %.3f sec/batch)')
                 
                 print (format_str % (datetime.now(), epoch, step, feed_lr, loss_value,
                     example_per_sec, float(duration)), end='\r')
-                
+                '''
                 # create time line #
                 #num_examples_per_step = batch_size
                 #tl = timeline.Timeline(run_metadata.step_stats)
