@@ -391,7 +391,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
 
             phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos) \
                           + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
-            phonetic_loss = tf.reduce_mean(phonetic_loss)
+            phonetic_loss = tf.sigmoid(tf.reduce_sum(phonetic_loss))
 
         # calculate loss
         reconstruction_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
@@ -454,8 +454,8 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
                 example_per_sec = batch_size / duration
                 epoch = floor(batch_size * step / NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
 
-                format_str = ('%s: epoch %d, step %d, LR %.5f, r_loss = %.2f, p_loss = %.2f, \
-                              s_loss = %.2f, t_loss = %.2f ( %.1f examples/sec; %.3f sec/batch)')
+                format_str = ('%s: epoch %d, step %d, LR %.5f, r_loss = %.2f, p_loss = %.2f, '
+                              ' s_loss = %.2f, t_loss = %.2f ( %.1f examples/sec; %.3f sec/batch)')
                 
                 print (format_str % (datetime.now(), epoch, step, feed_lr, r_loss, p_loss, s_loss, t_loss,
                     example_per_sec, float(duration)), end='\r')
