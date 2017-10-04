@@ -372,7 +372,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             s_enc_neg = tf.slice(enc_memory_neg, [0, 0], [batch_size, split_enc])
             p_enc_neg = tf.slice(enc_memory_neg, [0, split_enc], [batch_size, memory_dim-split_enc])
 
-            speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_neg)
+            speaker_loss = tf.sigmoid(tf.losses.mean_squared_error(s_enc, s_enc_neg))
 
         # domain-adversarial
         with tf.variable_scope('adversarial_phonetic') as scope_2:
@@ -391,11 +391,11 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
 
             phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos) \
                           + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
-            phonetic_loss = tf.reduce_sum(phonetic_loss)
+            phonetic_loss = tf.reduce_mean(phonetic_loss)
 
         # calculate loss
-        total_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
-        total_loss = total_loss + speaker_loss + phonetic_loss
+        reconstruction_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
+        total_loss = reconstruction_loss + speaker_loss + phonetic_loss
         ########
         # TODO/#
         ########
@@ -410,7 +410,10 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         
         # Create a saver.
         saver = tf.train.Saver(tf.all_variables())
-        tf.summary.scalar("RMSE loss", total_loss)
+        tf.summary.scalar("reconstruction loss", reconstruction_loss)
+        tf.summary.scalar("phonetic loss", phonetic_loss)
+        tf.summary.scalar("speaker loss", speaker_loss)
+        tf.summary.scalar("total loss", total_loss)
         # Build the summary operation based on the TF collection of Summaries.
         summary_op = tf.summary.merge_all()
 
@@ -444,17 +447,17 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             try:
                 
                 start_time = time.time()
-                _, loss_value= sess.run([train_op,
+                _, r_loss, p_loss, s_loss, t_loss = sess.run([train_op, reconstruction_loss, phonetic_loss, speaker_loss,
                     total_loss],feed_dict={learning_rate: feed_lr})
                 
                 duration = time.time() - start_time
                 example_per_sec = batch_size / duration
                 epoch = floor(batch_size * step / NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
 
-                format_str = ('%s: epoch %d, step %d, LR %.5f, loss = %.2f ( %.1f examples/sec;'
-                    ' %.3f sec/batch)')
+                format_str = ('%s: epoch %d, step %d, LR %.5f, r_loss = %.2f, p_loss = %.2f, \
+                              s_loss = %.2f, t_loss = %.2f ( %.1f examples/sec; %.3f sec/batch)')
                 
-                print (format_str % (datetime.now(), epoch, step, feed_lr, loss_value,
+                print (format_str % (datetime.now(), epoch, step, feed_lr, r_loss, p_loss, s_loss, t_loss,
                     example_per_sec, float(duration)), end='\r')
                 # create time line #
                 #num_examples_per_step = batch_size
