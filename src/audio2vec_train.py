@@ -210,7 +210,7 @@ def train_opt(loss, learning_rate, momentum):
     ### Optimizer building              ###
     ### variable: train_op              ###
     
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    optimizer = tf.train.AdamOptimizer(learning_rate)
     gvs = optimizer.compute_gradients(loss)
     capped_gvs = [(tf.clip_by_value(grad, -100., 100.), var) for grad, var in gvs]
     train_op = optimizer.apply_gradients(capped_gvs)
@@ -372,7 +372,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             s_enc_neg = tf.slice(enc_memory_neg, [0, 0], [batch_size, split_enc])
             p_enc_neg = tf.slice(enc_memory_neg, [0, split_enc], [batch_size, memory_dim-split_enc])
 
-            speaker_loss = tf.sigmoid(tf.losses.mean_squared_error(s_enc, s_enc_neg))
+            speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_neg)
 
         # domain-adversarial
         with tf.variable_scope('adversarial_phonetic') as scope_2:
@@ -391,7 +391,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
 
             phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos) \
                           + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
-            phonetic_loss = tf.sigmoid(tf.reduce_sum(phonetic_loss))
+            phonetic_loss = tf.reduce_sum(phonetic_loss)
 
         # calculate loss
         reconstruction_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
@@ -443,7 +443,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         print ("Start batch training.")
         feed_lr = INITIAL_LEARNING_RATE*pow(LEARNING_RATE_DECAY_FACTOR,int(floor(global_step/NUM_EPOCHS_PER_DECAY)))
         ### start training ###
-        for step in tqdm(range(global_step, MAX_STEP)):
+        for step in range(global_step, MAX_STEP):
             try:
                 
                 start_time = time.time()
@@ -560,7 +560,7 @@ def addParser():
     parser.add_argument('--max_step',type=int, default=80000,
         metavar='--<max step for training>',
         help='The max step for training')
-    parser.add_argument('--split_enc', type=int, default=50,
+    parser.add_argument('--split_enc', type=int, default=10,
         metavar='splitting size of the encoded vector')
 
     parser.add_argument('log_dir', 
@@ -576,7 +576,7 @@ def main():
     train_fn_scp =  FLAG.feat_scp
     print (train_fn_scp)
     fn_list = build_filename_list(train_fn_scp)
-    train(fn_list, FLAG.batch_size, FLAG.hidden_dim, FLAG.split_enc)
+    train(fn_list, FLAG.batch_size, FLAG.hidden_dim, split_enc=FLAG.split_enc)
     with open(model_file+'/feat_dim','w') as f:
         f.write(str(FLAG.hidden_dim))
     with open(model_file+'/batch_size','w') as f:
