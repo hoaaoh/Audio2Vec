@@ -437,6 +437,8 @@ def addParser():
         metavar='<--initial learning rate>')
     parser.add_argument('--decay_rate',type=int, default=1000,
         metavar='learning rate decay per batch epoch') 
+    parser.add_argument('--decay_factor',type=float, default=0.95,
+        metavar='<decay factor of learning rate>')
     parser.add_argument('--hidden_dim',type=int, default=100,
         metavar='<--hidden dimension>',
         help='The hidden dimension of a neuron')
@@ -480,6 +482,7 @@ if __name__ == '__main__':
     model_file = FLAG.model_dir
     MAX_STEP = FLAG.max_step
     STACK_NUM = FLAG.stack_num
+    LEARNING_RATE_DECAY_FACTOR=FLAG.decay_factor
     main()
 
 
