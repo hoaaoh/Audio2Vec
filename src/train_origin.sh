@@ -91,7 +91,7 @@ fi
 
 ### training ###
 export CUDA_VISIBLE_DEVICES=$device_id
-$path/src/audio2vec_train.py --init_lr=0.00001 --decay_rate=500 --hidden_dim=$dim --max_step=$max_step \
+$path/src/audio2vec_train.py --init_lr=0.0005 --decay_rate=500 --hidden_dim=$dim --max_step=$max_step \
   $tf_log_dir $tf_model_dir $feat_dir/train_AE.scp 2> $tf_log_dir/train.log
 
 [ -d $feat_dir/words_AE_query_$dim ] && rm -rf $feat_dir/words_AE_query_$dim

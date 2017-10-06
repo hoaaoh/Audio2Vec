@@ -372,7 +372,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             s_enc_neg = tf.slice(enc_memory_neg, [0, 0], [batch_size, split_enc])
             p_enc_neg = tf.slice(enc_memory_neg, [0, split_enc], [batch_size, memory_dim-split_enc])
 
-            speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_neg)
+            speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_pos) - tf.losses.mean_squared_error(s_enc, s_enc_neg)
 
         # domain-adversarial
         with tf.variable_scope('adversarial_phonetic') as scope_2:
@@ -391,7 +391,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
 
             phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos) \
                           + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
-            phonetic_loss = tf.reduce_sum(phonetic_loss)
+            phonetic_loss = tf.divide(tf.reduce_sum(phonetic_loss), batch_size)
 
         # calculate loss
         reconstruction_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
