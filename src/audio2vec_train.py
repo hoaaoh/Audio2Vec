@@ -5,18 +5,21 @@ import numpy as np
 import time 
 from math import floor
 from datetime import datetime 
+from tensorflow.contrib.rnn.python.ops import core_rnn
 from tensorflow.contrib.rnn.python.ops import core_rnn_cell
+from tensorflow.contrib.legacy_seq2seq.python.ops import seq2seq
+from tensorflow.python.framework import dtypes 
+from tensorflow.python.ops import variable_scope
 
 # from tensorflow.contrib.legacy_seq2seq.python.ops import seq2seq
 
-import seq2seq 
+# import seq2seq 
 from tensorflow.python.client import timeline
 from tensorflow.python.ops import math_ops
 from six.moves import xrange
 import argparse
 
 from flip_gradient import flip_gradient
-from tqdm import tqdm
 
 
 log_file = None
@@ -340,6 +343,25 @@ def inference(examples, batch_size, memory_dim, seq_len, feat_dim):
 
     return dec_proj_outputs, enc_memory
 
+def encode(examples, memory_dim):
+    cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
+    _, enc_state = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
+    return enc_state
+
+def decode(examples, batch_size, memory_dim, seq_len, feat_dim, enc_memory):
+    dec_inp = (tf.unstack(tf.zeros_like(examples[:], dtype=tf.float32, name="GO")))
+    cell = core_rnn_cell.GRUCell(memory_dim // 2, activation=tf.nn.relu)
+    print (enc_memory.shape)
+    dec_outputs, dec_state = seq2seq.rnn_decoder(dec_inp, enc_memory, cell)
+    dec_reshape = tf.transpose(tf.reshape(dec_outputs, (seq_len*batch_size, memory_dim // 2)))
+    W_p = tf.get_variable("output_proj_w", [feat_dim, memory_dim // 2])
+    b_p = tf.get_variable("output_proj_b", shape=(feat_dim), initializer=tf.constant_initializer(0.0))
+    b_p = [ b_p for i in range(seq_len*batch_size)]
+    b_p = tf.transpose(b_p)
+    dec_proj_outputs = tf.matmul(W_p, dec_reshape) + b_p
+
+    return dec_proj_outputs
+
 def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50):
     """ Training seq2seq for number of steps."""
     with tf.Graph().as_default():
@@ -356,46 +378,89 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         labels_neg = labels[2]
         labels = labels[0]
 
+        # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
         # build a graph that computes the results
         with tf.variable_scope('reconstruction_and_speaker') as scope_1:
             # training example
-            dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
-            s_enc = tf.slice(enc_memory, [0, 0], [batch_size, split_enc])
-            p_enc = tf.slice(enc_memory, [0, split_enc], [batch_size, memory_dim-split_enc])
+            # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
+            enc_memory = encode(examples, memory_dim)
+            s_mu_enc = tf.slice(enc_memory, [0, 0], [batch_size, split_enc])
+            s_va_enc = tf.slice(enc_memory, [0, split_enc], [batch_size, split_enc])
+            s_enc = s_mu_enc + tf.exp(s_va_enc / 2) * tf.random_normal([batch_size, split_enc])
+            p_mu_enc = tf.slice(enc_memory, [0, split_enc * 2], [batch_size, memory_dim // 2  - split_enc])
+            p_va_enc = tf.slice(enc_memory, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
+            p_enc = p_mu_enc + tf.exp(p_va_enc / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
             scope_1.reuse_variables()
             # positive example
-            dec_out_pos, enc_memory_pos = inference(examples_pos, batch_size, memory_dim, seq_len, feat_dim)
-            s_enc_pos = tf.slice(enc_memory_pos, [0, 0], [batch_size, split_enc])
-            p_enc_pos = tf.slice(enc_memory_pos, [0, split_enc], [batch_size, memory_dim-split_enc])
+            # dec_out_pos, enc_memory_pos = inference(examples_pos, batch_size, memory_dim, seq_len, feat_dim)
+            enc_memory_pos = encode(examples_pos, memory_dim)
+            s_mu_enc_pos = tf.slice(enc_memory_pos, [0, 0], [batch_size, split_enc])
+            s_va_enc_pos = tf.slice(enc_memory_pos, [0, split_enc], [batch_size, split_enc])
+            s_enc_pos = s_mu_enc_pos + tf.exp(s_va_enc_pos / 2) * tf.random_normal([batch_size, split_enc])
+            p_mu_enc_pos = tf.slice(enc_memory_pos, [0, split_enc * 2], [batch_size, memory_dim // 2  - split_enc])
+            p_va_enc_pos = tf.slice(enc_memory_pos, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
+            p_enc_pos = p_mu_enc_pos + tf.exp(p_va_enc_pos / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
             # negative example
-            dec_out_neg, enc_memory_neg = inference(examples_neg, batch_size, memory_dim, seq_len, feat_dim)
-            s_enc_neg = tf.slice(enc_memory_neg, [0, 0], [batch_size, split_enc])
-            p_enc_neg = tf.slice(enc_memory_neg, [0, split_enc], [batch_size, memory_dim-split_enc])
+            # dec_out_neg, enc_memory_neg = inference(examples_neg, batch_size, memory_dim, seq_len, feat_dim)
+            enc_memory_neg = encode(examples_neg, memory_dim)
+            s_mu_enc_neg = tf.slice(enc_memory_neg, [0, 0], [batch_size, split_enc])
+            s_va_enc_neg = tf.slice(enc_memory_neg, [0, split_enc], [batch_size, split_enc])
+            s_enc_neg = s_mu_enc_neg + tf.exp(s_va_enc_neg / 2) * tf.random_normal([batch_size, split_enc])
+            p_mu_enc_neg = tf.slice(enc_memory_neg, [0, split_enc * 2], [batch_size, memory_dim // 2  - split_enc])
+            p_va_enc_neg = tf.slice(enc_memory_neg, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
+            p_enc_neg = p_mu_enc_neg + tf.exp(p_va_enc_neg / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
 
-            speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_pos) - tf.losses.mean_squared_error(s_enc, s_enc_neg)
+            # KL-divergence loss
+            kl_divergence_loss =  - tf.reduce_mean(0.5 * tf.reduce_sum(1 + s_va_enc - tf.square(s_mu_enc) - tf.exp(s_va_enc), 1) \
+                       + 0.5 * tf.reduce_sum(1 + s_va_enc_pos - tf.square(s_mu_enc_pos) - tf.exp(s_va_enc_pos), 1) \
+                       + 0.5 * tf.reduce_sum(1 + s_va_enc_neg - tf.square(s_mu_enc_neg) - tf.exp(s_va_enc_neg), 1)) \
+                       - tf.reduce_mean(0.5 * tf.reduce_sum(1 + p_va_enc - tf.square(p_mu_enc) - tf.exp(p_va_enc), 1) \
+                       + 0.5 * tf.reduce_sum(1 + p_va_enc_pos - tf.square(p_mu_enc_pos) - tf.exp(p_va_enc_pos), 1) \
+                       + 0.5 * tf.reduce_sum(1 + p_va_enc_neg - tf.square(p_mu_enc_neg) - tf.exp(p_va_enc_neg), 1))
+
+            speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_pos) \
+                         - tf.losses.mean_squared_error(s_enc, s_enc_neg)
+                         # + (tf.norm(s_enc - s_enc_pos) + tf.norm(s_enc - s_enc_neg)) \
 
         # domain-adversarial
         with tf.variable_scope('adversarial_phonetic') as scope_2:
-            p_enc_adv = flip_gradient(p_enc)
-            p_enc_pos_adv = flip_gradient(p_enc_pos)
-            p_enc_neg_adv = flip_gradient(p_enc_neg)
-            W_adv = tf.get_variable("adv_w", [2*(memory_dim-split_enc), 128])
+            W_adv = tf.get_variable("adv_w", [2*(memory_dim // 2 - split_enc), 128])
             b_adv = tf.get_variable("adv_b", shape=[128])
             W_bin = tf.get_variable("bin_w", [128, 1])
             b_bin = tf.get_variable("bin_b", shape=[1])
-            pair_pos = tf.matmul(tf.concat([p_enc_adv, p_enc_pos_adv], 1), W_adv) + b_adv
-            bin_pos = tf.matmul(pair_pos, W_bin) + b_bin
-            scope_2.reuse_variables()
-            pair_neg = tf.matmul(tf.concat([p_enc_adv, p_enc_neg_adv], 1), W_adv) + b_adv
-            bin_neg = tf.matmul(pair_neg, W_bin) + b_bin
 
-            phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos) \
-                          + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
-            phonetic_loss = tf.divide(tf.reduce_sum(phonetic_loss), batch_size)
+            # WGAN gradient penalty
+            with tf.variable_scope('gradient_penalty') as scope_2_1:
+                alpha = tf.random_uniform(shape=[batch_size, 2*(memory_dim // 2 - split_enc)], minval=0., maxval=1.)
+                pair_pos_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_pos], 1))
+                pair_neg_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_neg], 1))
+                pair_hat = alpha * pair_pos_stop + (1 - alpha) * pair_neg_stop
+                pair_hat_l1 = tf.matmul(pair_hat, W_adv) + b_adv
+                bin_hat = tf.matmul(pair_hat_l1, W_bin) + b_bin
+
+                GP_loss = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.gradients(bin_hat, pair_hat)[0]**2, axis=1)) - 1.)**2   
+
+            # adversarial training with gradient flipping
+            with tf.variable_scope('adversarial') as scope_2_2:
+                pair_pos = flip_gradient(tf.concat([p_enc, p_enc_pos], 1))
+                pair_pos_l1 = tf.matmul(pair_pos, W_adv) + b_adv
+                bin_pos = tf.matmul(pair_pos_l1, W_bin) + b_bin
+                scope_2_2.reuse_variables()
+                pair_neg = flip_gradient(tf.concat([p_enc, p_enc_neg], 1))
+                pair_neg_l1 = tf.matmul(pair_neg, W_adv) + b_adv
+                bin_neg = tf.matmul(pair_neg_l1, W_bin) + b_bin
+
+                phonetic_loss = - tf.reduce_mean(bin_pos - bin_neg)
+
+            # phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos \
+            #               + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
+            # phonetic_loss = tf.divide(tf.reduce_sum(phonetic_loss), batch_size)
 
         # calculate loss
+            # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
+        dec_out = decode(examples, batch_size, memory_dim, seq_len, feat_dim, tf.concat([s_enc, p_enc], 1))
         reconstruction_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
-        total_loss = reconstruction_loss + speaker_loss + phonetic_loss
+        total_loss = reconstruction_loss + speaker_loss + phonetic_loss + GP_loss + kl_divergence_loss
         ########
         # TODO/#
         ########
@@ -412,7 +477,9 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         saver = tf.train.Saver(tf.all_variables())
         tf.summary.scalar("reconstruction loss", reconstruction_loss)
         tf.summary.scalar("phonetic loss", phonetic_loss)
+        tf.summary.scalar("GP loss", GP_loss)
         tf.summary.scalar("speaker loss", speaker_loss)
+        tf.summary.scalar("kl_divergence loss", kl_divergence_loss)
         tf.summary.scalar("total loss", total_loss)
         # Build the summary operation based on the TF collection of Summaries.
         summary_op = tf.summary.merge_all()
@@ -447,18 +514,22 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             try:
                 
                 start_time = time.time()
-                _, r_loss, p_loss, s_loss, t_loss = sess.run([train_op, reconstruction_loss, phonetic_loss, speaker_loss,
-                    total_loss],feed_dict={learning_rate: feed_lr})
+                _, r_loss, p_loss, gp_loss, s_loss, kl_loss, t_loss = sess.run([train_op, reconstruction_loss, \
+                    phonetic_loss, GP_loss, speaker_loss, kl_divergence_loss, total_loss],feed_dict={learning_rate: feed_lr})
+                # _, t_loss = sess.run([train_op, total_loss],feed_dict={learning_rate: feed_lr})
                 
                 duration = time.time() - start_time
                 example_per_sec = batch_size / duration
                 epoch = floor(batch_size * step / NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
 
-                format_str = ('%s: epoch %d, step %d, LR %.5f, r_loss = %.2f, p_loss = %.2f, '
-                              ' s_loss = %.2f, t_loss = %.2f ( %.1f examples/sec; %.3f sec/batch)')
-                
-                print (format_str % (datetime.now(), epoch, step, feed_lr, r_loss, p_loss, s_loss, t_loss,
-                    example_per_sec, float(duration)), end='\r')
+                format_str = ('%s:epoch %d,step %d,LR %.5f,r_loss=%.2f,p_loss=%.2f,'
+                              'gp_loss=%.2f,s_loss=%.2f,kl_loss=%.2f,t_loss=%.2f')
+                print (format_str % (datetime.now(), epoch, step, feed_lr, r_loss, p_loss, \
+                                     gp_loss, s_loss, kl_loss, t_loss), end='\n')
+                '''
+                format_str = ('%s: epoch %d, step %d, LR %.5f, t_loss = %.2f ( %.1f examples/sec; %.3f sec/batch)')
+                print (format_str % (datetime.now(), epoch, step, feed_lr, t_loss, example_per_sec, float(duration)), end='\r')
+                '''
                 # create time line #
                 #num_examples_per_step = batch_size
                 #tl = timeline.Timeline(run_metadata.step_stats)
