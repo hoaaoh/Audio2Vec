@@ -344,6 +344,7 @@ def inference(examples, batch_size, memory_dim, seq_len, feat_dim):
     return dec_proj_outputs, enc_memory
 
 def encode(examples, memory_dim):
+    # examples_norm = tf.contrib.layers.layer_norm(examples)
     cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
     _, enc_state = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
     return enc_state
@@ -358,7 +359,7 @@ def decode(examples, batch_size, memory_dim, seq_len, feat_dim, enc_memory):
     b_p = tf.get_variable("output_proj_b", shape=(feat_dim), initializer=tf.constant_initializer(0.0))
     b_p = [ b_p for i in range(seq_len*batch_size)]
     b_p = tf.transpose(b_p)
-    dec_proj_outputs = tf.matmul(W_p, dec_reshape) + b_p
+    dec_proj_outputs = tf.nn.relu(tf.matmul(W_p, dec_reshape) + b_p)
 
     return dec_proj_outputs
 
@@ -435,22 +436,25 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
                 pair_pos_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_pos], 1))
                 pair_neg_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_neg], 1))
                 pair_hat = alpha * pair_pos_stop + (1 - alpha) * pair_neg_stop
-                pair_hat_l1 = tf.matmul(pair_hat, W_adv) + b_adv
-                bin_hat = tf.matmul(pair_hat_l1, W_bin) + b_bin
+                pair_hat_norm = tf.contrib.layers.layer_norm(pair_hat)
+                pair_hat_l1 = tf.nn.relu(tf.matmul(pair_hat_norm, W_adv) + b_adv)
+                bin_hat = tf.nn.relu(tf.matmul(pair_hat_l1, W_bin) + b_bin)
 
-                GP_loss = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.gradients(bin_hat, pair_hat)[0]**2, axis=1)) - 1.)**2   
+                GP_loss = tf.reduce_mean(tf.abs(tf.sqrt(tf.reduce_sum(tf.gradients(bin_hat, pair_hat_norm)[0]**2, axis=1))) - 1.)**2   
 
             # adversarial training with gradient flipping
-            with tf.variable_scope('adversarial') as scope_2_2:
-                pair_pos = flip_gradient(tf.concat([p_enc, p_enc_pos], 1))
-                pair_pos_l1 = tf.matmul(pair_pos, W_adv) + b_adv
-                bin_pos = tf.matmul(pair_pos_l1, W_bin) + b_bin
-                scope_2_2.reuse_variables()
-                pair_neg = flip_gradient(tf.concat([p_enc, p_enc_neg], 1))
-                pair_neg_l1 = tf.matmul(pair_neg, W_adv) + b_adv
-                bin_neg = tf.matmul(pair_neg_l1, W_bin) + b_bin
+            with tf.variable_scope('adv_pos') as scope_2_2:
+                pair_pos = flip_gradient(tf.concat([p_enc, p_enc_pos], 1), l=10.)
+                pair_pos_norm = tf.contrib.layers.layer_norm(pair_pos)
+                pair_pos_l1 = tf.nn.relu(tf.matmul(pair_pos_norm, W_adv) + b_adv)
+                bin_pos = tf.nn.relu(tf.matmul(pair_pos_l1, W_bin) + b_bin)
+            with tf.variable_scope('adv_neg') as scope_2_2:
+                pair_neg = flip_gradient(tf.concat([p_enc, p_enc_neg], 1), l=10.)
+                pair_neg_norm = tf.contrib.layers.layer_norm(pair_neg)
+                pair_neg_l1 = tf.nn.relu(tf.matmul(pair_neg_norm, W_adv) + b_adv)
+                bin_neg = tf.nn.relu(tf.matmul(pair_neg_l1, W_bin) + b_bin)
 
-                phonetic_loss = - tf.reduce_mean(bin_pos - bin_neg)
+            phonetic_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)
 
             # phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos \
             #               + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
@@ -460,7 +464,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
         dec_out = decode(examples, batch_size, memory_dim, seq_len, feat_dim, tf.concat([s_enc, p_enc], 1))
         reconstruction_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
-        total_loss = reconstruction_loss + speaker_loss + phonetic_loss + GP_loss + kl_divergence_loss
+        total_loss = reconstruction_loss + (speaker_loss + phonetic_loss + GP_loss + kl_divergence_loss)
         ########
         # TODO/#
         ########
