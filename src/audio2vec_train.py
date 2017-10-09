@@ -359,9 +359,12 @@ def decode(examples, batch_size, memory_dim, seq_len, feat_dim, enc_memory):
     b_p = tf.get_variable("output_proj_b", shape=(feat_dim), initializer=tf.constant_initializer(0.0))
     b_p = [ b_p for i in range(seq_len*batch_size)]
     b_p = tf.transpose(b_p)
-    dec_proj_outputs = tf.nn.relu(tf.matmul(W_p, dec_reshape) + b_p)
+    dec_proj_outputs = tf.matmul(W_p, dec_reshape) + b_p
 
     return dec_proj_outputs
+
+def leaky_relu(x, alpha=0.01):
+    return tf.maximum(x, alpha*x)
 
 def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50):
     """ Training seq2seq for number of steps."""
@@ -381,9 +384,10 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
 
         # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
         # build a graph that computes the results
-        with tf.variable_scope('reconstruction_and_speaker') as scope_1:
+        with tf.variable_scope('encoding') as scope_1_1:
             # training example
             # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
+            # enc_memory = tf.layers.batch_normalization(encode(examples, memory_dim))
             enc_memory = encode(examples, memory_dim)
             s_mu_enc = tf.slice(enc_memory, [0, 0], [batch_size, split_enc])
             s_va_enc = tf.slice(enc_memory, [0, split_enc], [batch_size, split_enc])
@@ -391,9 +395,10 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             p_mu_enc = tf.slice(enc_memory, [0, split_enc * 2], [batch_size, memory_dim // 2  - split_enc])
             p_va_enc = tf.slice(enc_memory, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
             p_enc = p_mu_enc + tf.exp(p_va_enc / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
-            scope_1.reuse_variables()
+        with tf.variable_scope('encoding_pos') as scope_1_2:
             # positive example
             # dec_out_pos, enc_memory_pos = inference(examples_pos, batch_size, memory_dim, seq_len, feat_dim)
+            # enc_memory_pos = tf.layers.batch_normalization(encode(examples_pos, memory_dim))
             enc_memory_pos = encode(examples_pos, memory_dim)
             s_mu_enc_pos = tf.slice(enc_memory_pos, [0, 0], [batch_size, split_enc])
             s_va_enc_pos = tf.slice(enc_memory_pos, [0, split_enc], [batch_size, split_enc])
@@ -401,8 +406,10 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             p_mu_enc_pos = tf.slice(enc_memory_pos, [0, split_enc * 2], [batch_size, memory_dim // 2  - split_enc])
             p_va_enc_pos = tf.slice(enc_memory_pos, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
             p_enc_pos = p_mu_enc_pos + tf.exp(p_va_enc_pos / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
+        with tf.variable_scope('encoding_neg') as scope_1_3:
             # negative example
             # dec_out_neg, enc_memory_neg = inference(examples_neg, batch_size, memory_dim, seq_len, feat_dim)
+            # enc_memory_neg = tf.layers.batch_normalization(encode(examples_neg, memory_dim))
             enc_memory_neg = encode(examples_neg, memory_dim)
             s_mu_enc_neg = tf.slice(enc_memory_neg, [0, 0], [batch_size, split_enc])
             s_va_enc_neg = tf.slice(enc_memory_neg, [0, split_enc], [batch_size, split_enc])
@@ -411,17 +418,17 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
             p_va_enc_neg = tf.slice(enc_memory_neg, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
             p_enc_neg = p_mu_enc_neg + tf.exp(p_va_enc_neg / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
 
-            # KL-divergence loss
-            kl_divergence_loss =  - tf.reduce_mean(0.5 * tf.reduce_sum(1 + s_va_enc - tf.square(s_mu_enc) - tf.exp(s_va_enc), 1) \
-                       + 0.5 * tf.reduce_sum(1 + s_va_enc_pos - tf.square(s_mu_enc_pos) - tf.exp(s_va_enc_pos), 1) \
-                       + 0.5 * tf.reduce_sum(1 + s_va_enc_neg - tf.square(s_mu_enc_neg) - tf.exp(s_va_enc_neg), 1)) \
-                       - tf.reduce_mean(0.5 * tf.reduce_sum(1 + p_va_enc - tf.square(p_mu_enc) - tf.exp(p_va_enc), 1) \
-                       + 0.5 * tf.reduce_sum(1 + p_va_enc_pos - tf.square(p_mu_enc_pos) - tf.exp(p_va_enc_pos), 1) \
-                       + 0.5 * tf.reduce_sum(1 + p_va_enc_neg - tf.square(p_mu_enc_neg) - tf.exp(p_va_enc_neg), 1))
+        # KL-divergence loss
+        kl_divergence_loss =  - tf.reduce_mean(0.5 * tf.reduce_sum(1 + s_va_enc - tf.square(s_mu_enc) - tf.exp(s_va_enc), 1) \
+                   + 0.5 * tf.reduce_sum(1 + s_va_enc_pos - tf.square(s_mu_enc_pos) - tf.exp(s_va_enc_pos), 1) \
+                   + 0.5 * tf.reduce_sum(1 + s_va_enc_neg - tf.square(s_mu_enc_neg) - tf.exp(s_va_enc_neg), 1)) \
+                   - tf.reduce_mean(0.5 * tf.reduce_sum(1 + p_va_enc - tf.square(p_mu_enc) - tf.exp(p_va_enc), 1) \
+                   + 0.5 * tf.reduce_sum(1 + p_va_enc_pos - tf.square(p_mu_enc_pos) - tf.exp(p_va_enc_pos), 1) \
+                   + 0.5 * tf.reduce_sum(1 + p_va_enc_neg - tf.square(p_mu_enc_neg) - tf.exp(p_va_enc_neg), 1))
 
-            speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_pos) \
-                         - tf.losses.mean_squared_error(s_enc, s_enc_neg)
-                         # + (tf.norm(s_enc - s_enc_pos) + tf.norm(s_enc - s_enc_neg)) \
+        speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_pos) \
+                     - tf.losses.mean_squared_error(s_enc, s_enc_neg)
+                     # + (tf.norm(s_enc - s_enc_pos) + tf.norm(s_enc - s_enc_neg)) \
 
         # domain-adversarial
         with tf.variable_scope('adversarial_phonetic') as scope_2:
@@ -436,23 +443,23 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
                 pair_pos_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_pos], 1))
                 pair_neg_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_neg], 1))
                 pair_hat = alpha * pair_pos_stop + (1 - alpha) * pair_neg_stop
-                pair_hat_norm = tf.contrib.layers.layer_norm(pair_hat)
-                pair_hat_l1 = tf.nn.relu(tf.matmul(pair_hat_norm, W_adv) + b_adv)
-                bin_hat = tf.nn.relu(tf.matmul(pair_hat_l1, W_bin) + b_bin)
+                # pair_hat_norm = tf.contrib.layers.layer_norm(pair_hat)
+                pair_hat_l1 = leaky_relu(tf.matmul(pair_hat, W_adv) + b_adv)
+                bin_hat = leaky_relu(tf.matmul(pair_hat_l1, W_bin) + b_bin)
 
-                GP_loss = tf.reduce_mean(tf.abs(tf.sqrt(tf.reduce_sum(tf.gradients(bin_hat, pair_hat_norm)[0]**2, axis=1))) - 1.)**2   
+                GP_loss = 10 * tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.gradients(bin_hat, pair_hat)[0]**2, axis=1)) - 1.)**2   
 
             # adversarial training with gradient flipping
             with tf.variable_scope('adv_pos') as scope_2_2:
                 pair_pos = flip_gradient(tf.concat([p_enc, p_enc_pos], 1), l=10.)
-                pair_pos_norm = tf.contrib.layers.layer_norm(pair_pos)
-                pair_pos_l1 = tf.nn.relu(tf.matmul(pair_pos_norm, W_adv) + b_adv)
-                bin_pos = tf.nn.relu(tf.matmul(pair_pos_l1, W_bin) + b_bin)
+                # pair_pos_norm = tf.contrib.layers.layer_norm(pair_pos)
+                pair_pos_l1 = leaky_relu(tf.matmul(pair_pos, W_adv) + b_adv)
+                bin_pos = leaky_relu(tf.matmul(pair_pos_l1, W_bin) + b_bin)
             with tf.variable_scope('adv_neg') as scope_2_2:
                 pair_neg = flip_gradient(tf.concat([p_enc, p_enc_neg], 1), l=10.)
-                pair_neg_norm = tf.contrib.layers.layer_norm(pair_neg)
-                pair_neg_l1 = tf.nn.relu(tf.matmul(pair_neg_norm, W_adv) + b_adv)
-                bin_neg = tf.nn.relu(tf.matmul(pair_neg_l1, W_bin) + b_bin)
+                # pair_neg_norm = tf.contrib.layers.layer_norm(pair_neg)
+                pair_neg_l1 = leaky_relu(tf.matmul(pair_neg, W_adv) + b_adv)
+                bin_neg = leaky_relu(tf.matmul(pair_neg_l1, W_bin) + b_bin)
 
             phonetic_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)
 
@@ -463,7 +470,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         # calculate loss
             # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
         dec_out = decode(examples, batch_size, memory_dim, seq_len, feat_dim, tf.concat([s_enc, p_enc], 1))
-        reconstruction_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
+        reconstruction_loss = 5 * loss(dec_out, examples, seq_len, batch_size, feat_dim) 
         total_loss = reconstruction_loss + (speaker_loss + phonetic_loss + GP_loss + kl_divergence_loss)
         ########
         # TODO/#
