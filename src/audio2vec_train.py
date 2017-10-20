@@ -2,7 +2,8 @@
 import tensorflow as tf
 import tempfile
 import numpy as np
-import time 
+import time
+import os
 from math import floor
 from datetime import datetime 
 from tensorflow.contrib.rnn.python.ops import core_rnn
@@ -51,9 +52,10 @@ def TFRQ_feeding(filename_queue, feat_dim, seq_len):
     example = tf.parse_single_example(serialized_example,
         features={
             'feat': tf.FixedLenFeature([seq_len*3, feat_dim],dtype=tf.float32),
-            'label':tf.FixedLenFeature([3],dtype=tf.int64)
+            'label':tf.FixedLenFeature([3],dtype=tf.int64),
+            'utterance':tf.FixedLenFeature([3],dtype=tf.string)
         })
-    return example['feat'], example['label']
+    return example['feat'], example['label'], example['utterance']
 
 def batch_pipeline(filenames, batch_size, feat_dim, seq_len, \
     num_epochs=None):
@@ -75,12 +77,13 @@ def batch_pipeline(filenames, batch_size, feat_dim, seq_len, \
     # min_after_dequeue + (num_threads + a small safety margin) * batch_size
     min_after_dequeue = 5000
     capacity = min_after_dequeue + 8 * batch_size
-    example_batch, label_batch = tf.train.shuffle_batch(
+    example_batch, label_batch, utterance_batch = tf.train.shuffle_batch(
         result, batch_size=batch_size,num_threads=6,
                 capacity=capacity,\
         min_after_dequeue=min_after_dequeue)
     example_batch = tf.transpose (example_batch, perm=[1,0,2])
     label_batch = tf.transpose (label_batch, perm=[1,0])
+    utterance_batch = tf.transpose (utterance_batch, perm=[1,0])
     
     
     ### do batch normalization ###
@@ -90,46 +93,10 @@ def batch_pipeline(filenames, batch_size, feat_dim, seq_len, \
 
     unstacked_examples = tf.unstack(example_batch, seq_len*3)
     unstacked_labels = tf.unstack(label_batch, 3)
+    unstacked_utterances = tf.unstack(utterance_batch, 3)
     ### labels do not need to be unstacked ###
     ### unstacked_labels   = tf.unstack(label_batch, seq_len) ###
-    return unstacked_examples, unstacked_labels
-
-def loss(dec_out, labels, seq_len, batch_size, feat_dim):
-    """ Build loss graph
-    Args: 
-      dec_out: decoder output sequences, list of 2-D tensor 
-      labels : true label sequence, list of 2-D tensor 
-    Return:
-      loss 
-    """
-    labels_trans = tf.transpose(tf.reshape(labels, shape=(seq_len*batch_size, feat_dim)))
-    labels_trans = tf.reshape(labels_trans, shape=[-1])
-    dec_proj_outputs = tf.reshape(dec_out, shape=[-1])
-
-    ### compute RMSE error ###
-    ### mask the zeroes while computing loss ###
-    zero = tf.constant(0.,dtype=tf.float32)
-    where_no_mask = tf.cast(tf.not_equal(labels_trans,zero),dtype=tf.float32)
-    dec_proj_outputs_masked = tf.multiply(where_no_mask, dec_proj_outputs)
-    nums = tf.reduce_sum(where_no_mask)
-    tmp_loss = tf.subtract(dec_proj_outputs_masked, labels_trans)
-    tmp_loss = tf.multiply(tmp_loss, tmp_loss)
-
-    loss = tf.sqrt(tf.divide(tf.reduce_sum(tmp_loss),nums), name='total_loss')
-    
-    return loss
-
-def train_opt(loss, learning_rate, momentum):
-    ### Optimizer building              ###
-    ### variable: train_op              ###
-    
-    optimizer = tf.train.AdamOptimizer(learning_rate)
-    gvs = optimizer.compute_gradients(loss)
-    capped_gvs = [(tf.clip_by_value(grad, -100., 100.), var) for grad, var in gvs]
-    train_op = optimizer.apply_gradients(capped_gvs)
-
-    #train_op = optimizer.minimize(loss)
-    return train_op
+    return unstacked_examples, unstacked_labels, unstacked_utterances
 
 def build_filename_list(list_fn):
     fn_list = []
@@ -137,7 +104,7 @@ def build_filename_list(list_fn):
         for line in f:
             fn_list.append(line.rstrip())
     return  fn_list
-
+'''
 def inference(examples, batch_size, memory_dim, seq_len, feat_dim):
     """ Build the seq2seq model 
     Args: 
@@ -173,6 +140,42 @@ def inference(examples, batch_size, memory_dim, seq_len, feat_dim):
     dec_proj_outputs = tf.matmul(W_p, dec_reshape) + b_p
 
     return dec_proj_outputs, enc_memory
+'''
+def loss(dec_out, labels, seq_len, batch_size, feat_dim):
+    """ Build loss graph
+    Args: 
+      dec_out: decoder output sequences, list of 2-D tensor 
+      labels : true label sequence, list of 2-D tensor 
+    Return:
+      loss 
+    """
+    labels_trans = tf.transpose(tf.reshape(labels, shape=(seq_len*batch_size, feat_dim)))
+    labels_trans = tf.reshape(labels_trans, shape=[-1])
+    dec_proj_outputs = tf.reshape(dec_out, shape=[-1])
+
+    ### compute RMSE error ###
+    ### mask the zeroes while computing loss ###
+    zero = tf.constant(0.,dtype=tf.float32)
+    where_no_mask = tf.cast(tf.not_equal(labels_trans,zero),dtype=tf.float32)
+    dec_proj_outputs_masked = tf.multiply(where_no_mask, dec_proj_outputs)
+    nums = tf.reduce_sum(where_no_mask)
+    tmp_loss = tf.subtract(dec_proj_outputs_masked, labels_trans)
+    tmp_loss = tf.multiply(tmp_loss, tmp_loss)
+
+    loss = tf.sqrt(tf.divide(tf.reduce_sum(tmp_loss),nums), name='total_loss')
+    return loss
+
+def train_opt(loss, learning_rate, momentum):
+    ### Optimizer building              ###
+    ### variable: train_op              ###
+    
+    optimizer = tf.train.AdamOptimizer(learning_rate)
+    gvs = optimizer.compute_gradients(loss)
+    capped_gvs = [(tf.clip_by_value(grad, -100., 100.), var) for grad, var in gvs]
+    train_op = optimizer.apply_gradients(capped_gvs)
+
+    #train_op = optimizer.minimize(loss)
+    return train_op
 
 def encode(examples, memory_dim):
     # examples_norm = tf.contrib.layers.layer_norm(examples)
@@ -194,7 +197,6 @@ def decode(examples, batch_size, memory_dim, seq_len, feat_dim, enc_memory):
     b_p = [ b_p for i in range(seq_len*batch_size)]
     b_p = tf.transpose(b_p)
     dec_proj_outputs = tf.matmul(W_p, dec_reshape) + b_p
-
     return dec_proj_outputs
 
 def leaky_relu(x, alpha=0.01):
@@ -208,13 +210,16 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         ########
         #/TODO #
         ########
-        examples, labels = batch_pipeline(fn_list, batch_size, feat_dim, seq_len)
+        examples, labels, utterances = batch_pipeline(fn_list, batch_size, feat_dim, seq_len)
         examples_pos = [examples[i] for i in range(seq_len*3) if i%3 == 1]
         examples_neg = [examples[i] for i in range(seq_len*3) if i%3 == 2]
         examples = [examples[i] for i in range(seq_len*3) if i%3 == 0]
         labels_pos = labels[1]
         labels_neg = labels[2]
         labels = labels[0]
+        utterances_pos = utterances[1]
+        utterances_neg = utterances[2]
+        utterances = utterances[0]
 
         # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
         # build a graph that computes the results
@@ -285,9 +290,11 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
 
         # domain-adversarial
         with tf.variable_scope('adversarial_phonetic') as scope_2:
-            W_adv = tf.get_variable("adv_w", [2*(memory_dim - split_enc), 128])
-            b_adv = tf.get_variable("adv_b", shape=[128])
-            W_bin = tf.get_variable("bin_w", [128, 1])
+            W_adv_1 = tf.get_variable("adv_w_1", [2*(memory_dim - split_enc), 256])
+            b_adv_1 = tf.get_variable("adv_b_1", shape=[256])
+            W_adv_2 = tf.get_variable("adv_w_2", [256, 256])
+            b_adv_2 = tf.get_variable("adv_b_2", shape=[256])
+            W_bin = tf.get_variable("bin_w", [256, 1])
             b_bin = tf.get_variable("bin_b", shape=[1])
 
             # WGAN gradient penalty
@@ -297,22 +304,25 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
                 pair_neg_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_neg], 1))
                 pair_hat = alpha * pair_pos_stop + (1 - alpha) * pair_neg_stop
                 # pair_hat_norm = tf.contrib.layers.layer_norm(pair_hat)
-                pair_hat_l1 = leaky_relu(tf.matmul(pair_hat, W_adv) + b_adv)
-                bin_hat = leaky_relu(tf.matmul(pair_hat_l1, W_bin) + b_bin)
+                pair_hat_l1 = leaky_relu(tf.matmul(pair_hat, W_adv_1) + b_adv_1)
+                pair_hat_l2 = leaky_relu(tf.matmul(pair_hat_l1, W_adv_2) + b_adv_2)
+                bin_hat = leaky_relu(tf.matmul(pair_hat_l2, W_bin) + b_bin)
 
             GP_loss = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.gradients(bin_hat, pair_hat)[0]**2, axis=1)) - 1.)**2   
 
             # adversarial training with gradient flipping
             with tf.variable_scope('adv_pos') as scope_2_2:
-                pair_pos = flip_gradient(tf.concat([p_enc, p_enc_pos], 1), l=1.)
+                pair_pos = flip_gradient(tf.concat([p_enc, p_enc_pos], 1), l=0.2)
                 # pair_pos_norm = tf.contrib.layers.layer_norm(pair_pos)
-                pair_pos_l1 = leaky_relu(tf.matmul(pair_pos, W_adv) + b_adv)
-                bin_pos = leaky_relu(tf.matmul(pair_pos_l1, W_bin) + b_bin)
+                pair_pos_l1 = leaky_relu(tf.matmul(pair_pos, W_adv_1) + b_adv_1)
+                pair_pos_l1 = leaky_relu(tf.matmul(pair_pos_l1, W_adv_2) + b_adv_2)
+                bin_pos = leaky_relu(tf.matmul(pair_pos_l2, W_bin) + b_bin)
             with tf.variable_scope('adv_neg') as scope_2_2:
-                pair_neg = flip_gradient(tf.concat([p_enc, p_enc_neg], 1), l=1.)
+                pair_neg = flip_gradient(tf.concat([p_enc, p_enc_neg], 1), l=0.2)
                 # pair_neg_norm = tf.contrib.layers.layer_norm(pair_neg)
-                pair_neg_l1 = leaky_relu(tf.matmul(pair_neg, W_adv) + b_adv)
-                bin_neg = leaky_relu(tf.matmul(pair_neg_l1, W_bin) + b_bin)
+                pair_neg_l1 = leaky_relu(tf.matmul(pair_neg, W_adv_1) + b_adv_1)
+                pair_neg_l2 = leaky_relu(tf.matmul(pair_neg_l1, W_adv_2) + b_adv_2)
+                bin_neg = leaky_relu(tf.matmul(pair_neg_l2, W_bin) + b_bin)
 
             phonetic_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)
 
@@ -365,6 +375,8 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
         summary_writer = tf.summary.FileWriter(log_file,sess.graph)
 
         ### restore the model ###
+        if not os.path.exists(model_file):
+            os.makedirs(model_file)
         ckpt = tf.train.get_checkpoint_state(model_file)
         global_step = 0
         if ckpt and ckpt.model_checkpoint_path:
@@ -401,7 +413,7 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=50
                 #num_examples_per_step = batch_size
                 #tl = timeline.Timeline(run_metadata.step_stats)
                 #ctf = tl.generate_chrome_trace_format(show_memory=True)
-                if step % 2000 == 0:
+                if step % 500 == 0:
                     ckpt = model_file + '/model.ckpt'
                     summary_str = sess.run(summary_op,feed_dict={learning_rate:
                         feed_lr})
@@ -529,8 +541,8 @@ if __name__ == '__main__':
     FLAG = parser.parse_args()
     INITIAL_LEARNING_RATE= FLAG.init_lr
     NUM_EPOCHS_PER_DECAY = FLAG.decay_rate
-    log_file = FLAG.log_dir
-    model_file = FLAG.model_dir
+    log_file = FLAG.log_dir + '_' + str(FLAG.init_lr)
+    model_file = FLAG.model_dir + '_' + str(FLAG.init_lr)
     MAX_STEP=FLAG.max_step    
     main()
 

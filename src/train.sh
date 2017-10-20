@@ -48,7 +48,7 @@ if [ ! -f $feat_dir/extracted ];then
   # done_count=$((0))
   # file_list=($feat_dir/feats/50/*)
   # for file in $feat_dir/feats/50/*
-  num_tfrecords=10
+  num_tfrecords=100
   for ((i=0;i<${num_tfrecords};++i))
   do
     # outname=$(basename "$file")
@@ -74,7 +74,8 @@ if [ ! -f $feat_dir/train_AE.scp ] && [ ! -f $feat_dir/query_AE.scp ] && [ ! -f 
 then
 #   tail -n 1 $feat_dir/all_AE.scp > $tmp
 #   head -n -1 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
-  head -n -1 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
+  head -n -10 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
+  tail -n 10 $feat_dir/all_AE.scp > $feat_dir/test_AE.scp
   # cat $tmp | head -n 5 > $feat_dir/query_AE.scp 
   # cat $tmp | tail -n 25 > $feat_dir/corpus_AE.scp
   rm $tmp
@@ -90,15 +91,16 @@ fi
 # fi 
 
 ### training ###
+init_lr=0.0001
 export CUDA_VISIBLE_DEVICES=$device_id
-$path/src/audio2vec_train.py --init_lr=0.01 --decay_rate=500 --hidden_dim=$dim --max_step=$max_step \
+$path/src/audio2vec_train.py --init_lr=$init_lr --decay_rate=500 --hidden_dim=$dim --max_step=$max_step \
   $tf_log_dir $tf_model_dir $feat_dir/train_AE.scp 2> $tf_log_dir/train.log
 
-[ -d $feat_dir/words_AE_query_$dim ] && rm -rf $feat_dir/words_AE_query_$dim
-[ -d $feat_dir/words_AE_corpus_$dim ] && rm -rf $feat_dir/words_AE_corpus_$dim
+#[ -d $feat_dir/words_AE_query_$dim ] && rm -rf $feat_dir/words_AE_query_$dim
+#[ -d $feat_dir/words_AE_corpus_$dim ] && rm -rf $feat_dir/words_AE_corpus_$dim
 
-mkdir $feat_dir/words_AE_query_$dim
-mkdir $feat_dir/words_AE_corpus_$dim
+#mkdir $feat_dir/words_AE_query_$dim
+#mkdir $feat_dir/words_AE_corpus_$dim
 ### evaluation ###
 # $path/src/audio2vec_eval.py --dim=$dim --test_num=50000 \
 #   $tf_model_dir $tf_log_dir $feat_dir/query_AE.scp $feat_dir/words_AE_query_$dim

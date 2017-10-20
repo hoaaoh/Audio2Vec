@@ -100,11 +100,13 @@ def main(unused_argv):
                 if len(line) == 0:
                     print ("len(line)=0")
                     print (file)
+    count = 0
     writer = tf.python_io.TFRecordWriter(FLAGS.output)
     for i in tqdm(range(start_id, end_id)):
         feats = []
         ### label is word ID ###
         labels = []
+        utterances = []
         for line in feats_dic[file_list[i]]:
             line = line.rstrip().split(',')
             # print (len(arr_ark))
@@ -112,27 +114,34 @@ def main(unused_argv):
             try:
                 feats.append(list(map(float, line[0:-1])))
                 labels.append([int(float(line[-1]))])
+                utterances.append([str.encode(file_list[i])])
             except ValueError:
                 print ("Value Error")
+            count += 1
         # length = len(feats) / FLAGS.feats_dim
-        for feat, label in zip(feats, labels):  
+        for feat, label, utterance in zip(feats, labels, utterances):  
             feat_concat = []
             label_concat = []
+            utterance_concat = []
             feat_pos = None
             label_pos = None
+            utterance_pos = None
             feat_neg = None
             label_neg = None
+            utterance_neg = None
 
             # positive pair
             index = random.choice(range(len(feats)))
             feat_pos = feats[index]
             label_pos = labels[index]
+            utterance_pos = utterances[index]
             # negative pair
             # file_neg_name = random.choice(file_list)
             file_neg_name = random.choice(list(feats_dic.keys()))
             feats_neg = []
             ### label is word ID ###
             labels_neg = []
+            utterances_neg = []
             for line in feats_dic[file_neg_name]:
                 line = line.rstrip().split(',')
                 # print (len(arr_ark))
@@ -140,6 +149,7 @@ def main(unused_argv):
                 try:
                     feats_neg.append(list(map(float, line[0:-1])))
                     labels_neg.append([int(float(line[-1]))])
+                    utterances_neg.append([str.encode(file_neg_name)])
                 except ValueError:
                     print ("Value Error")
             if feats_neg == None or len(feats_neg) == 0:
@@ -148,6 +158,7 @@ def main(unused_argv):
             index = random.choice(range(len(feats_neg)))
             feat_neg = feats_neg[index]
             label_neg = labels_neg[index]
+            utterance_neg = utterances_neg[index]
 
             feat_concat.extend(feat)
             feat_concat.extend(feat_pos)
@@ -155,15 +166,20 @@ def main(unused_argv):
             label_concat.extend(label)
             label_concat.extend(label_pos)
             label_concat.extend(label_neg)
+            utterance_concat.extend(utterance)
+            utterance_concat.extend(utterance_pos)
+            utterance_concat.extend(utterance_neg)
             if len(feat_concat) != 5850:
                 print ('Q_Q')
                 continue
             example = tf.train.Example(features=tf.train.Features(feature={
                 'feat': _float_feature(feat_concat),
-                'label': _int64_feature(label_concat)
+                'label': _int64_feature(label_concat),
+                'utterance': _bytes_feature(utterance_concat)
             }))
             writer.write(example.SerializeToString())
     writer.close()
+    print ("word # of " + FLAGS.output + ": " + str(count))
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser(description = 

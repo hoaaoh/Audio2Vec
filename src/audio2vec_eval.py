@@ -74,7 +74,7 @@ def eval_once(saver, total_loss, summary_writer, summary_op):
 
     return 
 
-def get_BN_feat(saver, total_loss, summary_writer, summary_op,labels, dec_memory):
+def get_BN_feat(saver, reconstruction_loss, summary_writer, summary_op, labels, utterances, s_enc, p_enc):
     """Getting Bottleneck Features"""
     #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
     #with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
@@ -101,19 +101,27 @@ def get_BN_feat(saver, total_loss, summary_writer, summary_op,labels, dec_memory
             while step < num_iter and not coord.should_stop():
                 ### words is a tensor with shape (batch_size, 1) ###
                 ### memories are seq_len list with (batch, feat_dim) shape tensors ###
-                single_loss, words, memories = sess.run([total_loss, labels, dec_memory])
+                single_loss, words, utters, s_memories, p_memories = \
+                    sess.run([reconstruction_loss, labels, utterances, s_enc, p_enc])
                 ### print(np.shape(memories))
                 for i in range(len(words)):
-                    word_id = words[i][0]
-                    single_memory = memories[i]
+                    word_id = words[i]
+                    single_memory = p_memories[i]
                     single_memory = single_memory.tolist()
                     with open(word_dir+'/'+str(word_id), 'a') as word_file:
-                        for j in range(len(single_memory)):
+                        for j in range(split_enc, len(single_memory)):
                             word_file.write(str(single_memory[j]))
                             if j != len(single_memory)-1:
                                 word_file.write(',')
                             else:
                                 word_file.write('\n')
+                    with open(utter_dir+'/'+str(utters[i]), 'a') as utter_file:
+                        for j in range(split_enc):
+                            utter_file.write(str(single_memory[j]))
+                            if j != split_enc-1:
+                                utter_file.write(',')
+                            else:
+                                utter_file.write('\n')
                             
                 # print (single_loss)
                 total_loss_value += single_loss
@@ -135,49 +143,31 @@ def get_BN_feat(saver, total_loss, summary_writer, summary_op,labels, dec_memory
 def BN_evaluation(fn_list):
     """ Getting Bottleneck Features """
     with tf.Graph().as_default() as g:
-        examples, labels = audio2vec.batch_pipeline(fn_list, batch_size,
+        examples, labels, utterances = audio2vec.batch_pipeline(fn_list, batch_size,
             feat_dim, seq_len)
-        examples = examples[0]
+        examples = [examples[i] for i in range(seq_len*3) if i%3 == 0]
         labels = labels[0]
+        utterances = utterances[0]
         
-        dec_out, enc_memory = audio2vec.inference(examples, batch_size,
-            memory_dim, seq_len, feat_dim)
-        total_loss = audio2vec.loss(dec_out, examples, seq_len, batch_size,
-            feat_dim)
+        W_enc = tf.get_variable("enc_w", [memory_dim, memory_dim])
+        b_enc = tf.get_variable("enc_b", shape=[memory_dim])
+        with tf.variable_scope('encoding') as scope_1_1:
+            enc_state = audio2vec.encode(examples, memory_dim)
+            enc_memory = audio2vec.leaky_relu(tf.matmul(enc_state, W_enc) + b_enc)
+            s_enc = tf.slice(enc_memory, [0, 0], [batch_size, split_enc])
+            p_enc = tf.slice(enc_memory, [0, split_enc], [batch_size, memory_dim - split_enc])
+        W_dec = tf.get_variable("dec_w", [memory_dim, memory_dim])
+        b_dec = tf.get_variable("dec_b", shape=[memory_dim])
+        dec_state = audio2vec.leaky_relu(tf.matmul(tf.concat([s_enc,p_enc], 1), W_dec) + b_dec)
+        dec_out = audio2vec.decode(examples, batch_size, memory_dim, seq_len, feat_dim, dec_state)
+
+        reconstruction_loss = audio2vec.loss(dec_out, examples, seq_len, batch_size, feat_dim) 
         saver = tf.train.Saver(tf.all_variables())
 
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(log_dir + '/BN', g)
-        get_BN_feat(saver, total_loss, summary_writer, summary_op, labels,
-            enc_memory)
-        return 
-
-
-def evaluate(fn_list):
-    """ Evaluation """
-    with tf.Graph().as_default() as g:
-        # Get evaluation sequences #
-        examples, labels = audio2vec.batch_pipeline(fn_list, batch_size,
-            feat_dim, seq_len)
-        examples = examples[0]
-        labels = labels[0]
-        # build a graph that computes the results #
-        dec_out, enc_memory = audio2vec.inference(examples, batch_size, memory_dim, seq_len,
-            feat_dim)
-        # calculate loss 
-        total_loss = audio2vec.loss(dec_out, examples, seq_len, batch_size, feat_dim)
-        
-        # Create a saver.
-        saver = tf.train.Saver(tf.all_variables())
-
-        # Build the summary operation based on the TF collection of Summaries.
-        summary_op =  tf.summary.merge_all()
-
-        summary_writer = tf.summary.FileWriter(log_dir + '/eval', g)
-
-        #while True:
-        eval_once(saver, total_loss, summary_writer, summary_op)
-        time.sleep(60*5)
+        get_BN_feat(saver, reconstruction_loss, summary_writer, summary_op, labels,
+            utterances, s_enc, p_enc)
         return 
 
 def parser_opt():
@@ -195,7 +185,10 @@ def parser_opt():
     parser.add_argument('word_dir',
         metavar='<word directory>',
         help='the directory where stores generated bottleneck features')
-    parser.add_argument('--dim',type=int,default=100,
+    parser.add_argument('utter_dir',
+        metavar='<utter directory>',
+        help='the directory where stores generated bottleneck features')
+    parser.add_argument('--dim',type=int,default=400,
         metavar='<hidden layer dimension>',
         help='The hidden layer dimension')
     parser.add_argument('--batch_size',type=int,default=500,
@@ -204,6 +197,9 @@ def parser_opt():
     parser.add_argument('--test_num',type=int,default=63372,
         metavar='<The testing number of each languages>',
         help='The testing number of each languages')
+    parser.add_argument('--split_enc',type=int,default=20,
+        metavar='<split enc>',
+        help='split enc')
     return parser 
         
 def main():
@@ -218,7 +214,9 @@ if __name__ == '__main__':
     model_dir = FLAG.model_dir
     log_dir = FLAG.log_dir
     word_dir = FLAG.word_dir
+    utter_dir = FLAG.utter_dir
     memory_dim = FLAG.dim
     batch_size = FLAG.batch_size
     NUM_EXAMPLES_PER_EPOCH_FOR_TEST  = FLAG.test_num
+    split_enc = FLAG.split_enc
     main()
