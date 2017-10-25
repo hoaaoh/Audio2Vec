@@ -368,7 +368,9 @@ def train(fn_list,batch_size, memory_dim, seq_len=50, feat_dim=39):
         init = tf.global_variables_initializer()
         
         # Start running operations on the Graph.
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
+        config = tf.ConfigProto(log_device_placement=False)
+        config.gpu_options.allow_growth = True
+        sess = tf.Session(config=config)
         sess.run(init)
         sess.graph.finalize()
         # Start the queue runners.

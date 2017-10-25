@@ -225,6 +225,9 @@ def parser_opt():
     parser.add_argument('--test_num',type=int,default=63372,
         metavar='<The testing number of each languages>',
         help='The testing number of each languages')
+    parser.add_argument('--stack_num',type=int, default=3,
+        metavar='<rnn stack number>',
+        help='The number of rnn stacking')
     return parser 
         
 def main():
@@ -242,4 +245,5 @@ if __name__ == '__main__':
     memory_dim = FLAG.dim
     batch_size = FLAG.batch_size
     NUM_EXAMPLES_PER_EPOCH_FOR_TEST  = FLAG.test_num
+    audio2vec.STACK_NUM = FLAG.stack_num
     main()
