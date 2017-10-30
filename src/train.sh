@@ -10,11 +10,15 @@
 #   exit 1
 # fi
 
+init_lr=0.0005
+gradient_flip=1.0
 path=/home/grtzsohalf/Audio2Vec
 feat_dir=/home_local/grtzsohalf/yeeee
 dim=$1
-model_dir=$path/exp/model2/$dim
-log_dir=$path/exp/log2/$dim
+#model_dir=$path/exp/model_lr${init_lr}_gf${gradient_flip}/$dim
+#log_dir=$path/exp/log_lr${init_lr}_gf${gradient_flip}/$dim
+model_dir=$path/exp/model_lr${init_lr}_iter_train_5/$dim
+log_dir=$path/exp/log_lr${init_lr}_iter_train_5/$dim
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
 device_id=$2
@@ -91,9 +95,9 @@ fi
 # fi 
 
 ### training ###
-init_lr=0.0001
 export CUDA_VISIBLE_DEVICES=$device_id
-$path/src/audio2vec_train.py --init_lr=$init_lr --decay_rate=500 --hidden_dim=$dim --max_step=$max_step \
+$path/src/audio2vec_train.py --init_lr=$init_lr --gradient_flip=$gradient_flip \
+  --decay_rate=500 --hidden_dim=$dim --max_step=$max_step \
   $tf_log_dir $tf_model_dir $feat_dir/train_AE.scp 2> $tf_log_dir/train.log
 
 #[ -d $feat_dir/words_AE_query_$dim ] && rm -rf $feat_dir/words_AE_query_$dim

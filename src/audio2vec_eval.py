@@ -149,13 +149,17 @@ def BN_evaluation(fn_list):
         labels = labels[0]
         utterances = utterances[0]
         
-        W_enc = tf.get_variable("enc_w", [memory_dim, memory_dim])
-        b_enc = tf.get_variable("enc_b", shape=[memory_dim])
+        W_enc_p = tf.get_variable("enc_w_p", [memory_dim - split_enc, memory_dim - split_enc])
+        b_enc_p = tf.get_variable("enc_b_p", shape=[memory_dim - split_enc])
+        W_enc_s = tf.get_variable("enc_w_s", [split_enc, split_enc])
+        b_enc_s = tf.get_variable("enc_b_s", shape=[split_enc])
         with tf.variable_scope('encoding') as scope_1_1:
-            enc_state = audio2vec.encode(examples, memory_dim)
-            enc_memory = audio2vec.leaky_relu(tf.matmul(enc_state, W_enc) + b_enc)
-            s_enc = tf.slice(enc_memory, [0, 0], [batch_size, split_enc])
-            p_enc = tf.slice(enc_memory, [0, split_enc], [batch_size, memory_dim - split_enc])
+            with tf.variable_scope('encoding_p') as scope_1_1_1:
+                p_enc = audio2vec.encode(examples, memory_dim - split_enc)
+                p_enc = audio2vec.leaky_relu(tf.matmul(p_enc, W_enc_p) + b_enc_p)
+            with tf.variable_scope('encoding_s') as scope_1_1_2:
+                s_enc = audio2vec.encode(examples, split_enc)
+                s_enc = audio2vec.leaky_relu(tf.matmul(s_enc, W_enc_s) + b_enc_s)
         W_dec = tf.get_variable("dec_w", [memory_dim, memory_dim])
         b_dec = tf.get_variable("dec_b", shape=[memory_dim])
         dec_state = audio2vec.leaky_relu(tf.matmul(tf.concat([s_enc,p_enc], 1), W_dec) + b_dec)

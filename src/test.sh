@@ -10,11 +10,15 @@
 #   exit 1
 # fi
 
+init_lr=0.0005
+gradient_flip=1.0
 path=/home/grtzsohalf/Audio2Vec
 feat_dir=/home_local/grtzsohalf/yeeee
 dim=$1
-model_dir=$path/exp/model2/$dim
-log_dir=$path/exp/log2/$dim
+#model_dir=$path/exp/model_lr${init_lr}_gf${gradient_flip}/$dim
+#log_dir=$path/exp/log_lr${init_lr}_gf${gradient_flip}/$dim
+model_dir=$path/exp/model_lr${init_lr}_iter_train_5/$dim
+log_dir=$path/exp/log_lr${init_lr}_iter_train_5/$dim
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
 device_id=$2
@@ -75,8 +79,8 @@ if [ ! -f $feat_dir/train_AE.scp ] && [ ! -f $feat_dir/test_AE.scp ] ;
 then
 #   tail -n 1 $feat_dir/all_AE.scp > $tmp
 #   head -n -1 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
-  head -n -1 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
-  tail -n 1 $feat_dir/all_AE.scp > $feat_dir/test_AE.scp
+  head -n -10 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
+  tail -n 10 $feat_dir/all_AE.scp > $feat_dir/test_AE.scp
   # cat $tmp | head -n 5 > $feat_dir/query_AE.scp 
   # cat $tmp | tail -n 25 > $feat_dir/corpus_AE.scp
   #rm $tmp
@@ -92,7 +96,6 @@ fi
 # fi 
 
 ### training ###
-init_lr=0.0005
 export CUDA_VISIBLE_DEVICES=$device_id
 #$path/src/audio2vec_train.py --init_lr=$init_lr --decay_rate=500 --hidden_dim=$dim --max_step=$max_step \
   #$tf_log_dir $tf_model_dir $feat_dir/train_AE.scp 2> $tf_log_dir/train.log
@@ -109,8 +112,8 @@ mkdir $feat_dir/utters_AE_test_$dim
   #$tf_model_dir $tf_log_dir $feat_dir/query_AE.scp $feat_dir/words_AE_query_$dim
 #$path/src/audio2vec_eval.py --dim=$dim --test_num=250000 \
   #$tf_model_dir $tf_log_dir $feat_dir/corpus_AE.scp $feat_dir/words_AE_corpus_$dim
-$path/src/audio2vec_eval.py --dim=$dim --test_num=260000 \
-  ${tf_model_dir}_$init_lr ${tf_log_dir}_$init_lr $feat_dir/test_AE.scp \
+$path/src/audio2vec_eval.py --dim=$dim --test_num=254790 \
+  $tf_model_dir $tf_log_dir $feat_dir/test_AE.scp \
   $feat_dir/words_AE_test_$dim $feat_dir/utters_AE_test_$dim
 
 #$path/src/trans_dir_to_file.py $feat_dir/words_AE_query_$dim $feat_dir/query_AE_$dim
