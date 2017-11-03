@@ -74,16 +74,16 @@ def stack_rnn_seq2seq_with_bottle_memory(encoder_inputs,
         enc_cell = copy.copy(cell)
         enc_output, enc_state = core_rnn.static_rnn(enc_cell, encoder_inputs,
             dtype=dtype)
-    for i in range(stack_num):
+    for i in range(2,stack_num):
         with variable_scope.variable_scope(scope or "stack_rnn_encoder_"+str(i)):
             enc_cell = copy.copy(cell)
             enc_output, enc_state = core_rnn.static_rnn(enc_cell,enc_output,dtype=dtype)
 
-    with variable_scope.variable_scope(scope or "stack_rnn_dec_0"):
+    with variable_scope.variable_scope(scope or "stack_rnn_dec_1"):
         dec_cell = copy.copy(cell)
         dec_output, dec_state = seq2seq.rnn_decoder(decoder_inputs,
             enc_state,dec_cell)
-    for i in range(stack_num):
+    for i in range(2,stack_num):
         with variable_scope.variable_scope(scope or
             "stack_rnn_decoder_"+str(i)):
             dec_cell = copy.copy(cell)
