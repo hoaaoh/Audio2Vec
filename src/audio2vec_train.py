@@ -104,43 +104,7 @@ def build_filename_list(list_fn):
         for line in f:
             fn_list.append(line.rstrip())
     return  fn_list
-'''
-def inference(examples, batch_size, memory_dim, seq_len, feat_dim):
-    """ Build the seq2seq model 
-    Args: 
-      Sequence Inputs: list of 2-D tensors
-      batch_size
-      memory_dim
-      feat_dim 
 
-    Returns:
-      Sequence Results: list of 2-D tensors
-    """
-    ### Decoder input: prepend all  "GO" tokens and drop the final    ###
-    ### token of the encoder input                                    ###
-    ### input: GO GO GO GO GO ... GO                                  ###
-    dec_inp = (tf.unstack(tf.zeros_like(examples[:], dtype=tf.float32,
-        name="GO")))
-    #dec_inp = ([tf.zeros_like(examples[0], dtype=tf.float32,
-    #    name="GO")] + examples[:-1])
-
-    ### these two calls defined main cell in seq2seq and seq2seq model ###
-    cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
-
-    dec_outputs, enc_memory, dec_memory = seq2seq.basic_rnn_seq2seq_with_bottle_memory(examples, dec_inp, cell)
-    ######################################################################
-    
-    dec_reshape = tf.transpose(tf.reshape(dec_outputs, (seq_len*batch_size,\
-            memory_dim)))
-    W_p = tf.get_variable("output_proj_w", [feat_dim, memory_dim])
-    b_p = tf.get_variable("output_proj_b", shape=(feat_dim), \
-            initializer=tf.constant_initializer(0.0))
-    b_p = [ b_p for i in range(seq_len*batch_size)]
-    b_p = tf.transpose(b_p)
-    dec_proj_outputs = tf.matmul(W_p, dec_reshape) + b_p
-
-    return dec_proj_outputs, enc_memory
-'''
 def loss(dec_out, labels, seq_len, batch_size, feat_dim):
     """ Build loss graph
     Args: 
@@ -189,30 +153,26 @@ def generate_opt(loss, learning_rate, momentum, var_list):
     # train_op = optimizer.minimize(loss, var_list=var_list)
     return train_op
 
-def discriminate_opt(loss, learning_rate, momentum):
+def discriminate_opt(loss, learning_rate, momentum, var_list):
     ### Optimizer building              ###
     ### variable: discriminate_op              ###
     
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5)
-    gvs = optimizer.compute_gradients(loss)
+    gvs = optimizer.compute_gradients(loss, var_list=var_list)
     capped_gvs = [(grad if grad is None else tf.clip_by_value(grad, -10., 10.), var) for grad, var in gvs]
     train_op = optimizer.apply_gradients(capped_gvs)
 
     # train_op = optimizer.minimize(loss)
     return train_op
 
-def encode(examples, memory_dim):
+def encode(cell, examples):
     # examples_norm = tf.contrib.layers.layer_norm(examples)
-    cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
-    # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
     _, enc_state = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
     # _, (c, enc_state) = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
     return enc_state
 
-def decode(examples, batch_size, memory_dim, seq_len, feat_dim, enc_memory):
+def decode(cell, examples, batch_size, memory_dim, seq_len, feat_dim, enc_memory):
     dec_inp = (tf.unstack(tf.zeros_like(examples[:], dtype=tf.float32, name="GO")))
-    cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
-    # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
     dec_outputs, dec_state = seq2seq.rnn_decoder(dec_inp, enc_memory, cell)
     print (dec_state.shape)
     dec_reshape = tf.transpose(tf.reshape(dec_outputs, (seq_len*batch_size, memory_dim)))
@@ -247,90 +207,40 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=20
 
         # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
         # build a graph that computes the results
-        W_enc_p = tf.get_variable("enc_w_p", [memory_dim - split_enc, memory_dim - split_enc])
-        b_enc_p = tf.get_variable("enc_b_p", shape=[memory_dim - split_enc])
-        W_enc_s = tf.get_variable("enc_w_s", [split_enc, split_enc])
-        b_enc_s = tf.get_variable("enc_b_s", shape=[split_enc])
-        with tf.variable_scope('encoding') as scope_1_1:
+        with tf.variable_scope('encoding') as scope_1:
+            W_enc_p = tf.get_variable("enc_w_p", [memory_dim - split_enc, memory_dim - split_enc])
+            b_enc_p = tf.get_variable("enc_b_p", shape=[memory_dim - split_enc])
+            W_enc_s = tf.get_variable("enc_w_s", [split_enc, split_enc])
+            b_enc_s = tf.get_variable("enc_b_s", shape=[split_enc])
             # training example
             # dec_out, enc_memory = inference(examples, batch_size, memory_dim, seq_len, feat_dim)
             # enc_memory = tf.layers.batch_normalization(encode(examples, memory_dim))
-            with tf.variable_scope('encoding_p') as scope_1_1_1:
-                p_enc = encode(examples, memory_dim - split_enc)
+            with tf.variable_scope('encoding_p') as scope_1_1:
+                cell = core_rnn_cell.GRUCell(memory_dim - split_enc, activation=tf.nn.relu)
+                # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
+                p_enc = encode(cell, examples)
                 p_enc = leaky_relu(tf.matmul(p_enc, W_enc_p) + b_enc_p)
-            with tf.variable_scope('encoding_s') as scope_1_1_2:
-                s_enc = encode(examples, split_enc)
-                s_enc = leaky_relu(tf.matmul(s_enc, W_enc_s) + b_enc_s)
-            '''
-            s_enc = tf.slice(enc_memory, [0, 0], [batch_size, split_enc])
-            p_enc = tf.slice(enc_memory, [0, split_enc], [batch_size, memory_dim - split_enc])
-            '''
-            '''
-            s_mu_enc = tf.slice(enc_memory, [0, 0], [batch_size, split_enc])
-            s_va_enc = tf.slice(enc_memory, [0, split_enc], [batch_size, split_enc])
-            s_enc = s_mu_enc + tf.exp(s_va_enc / 2) * tf.random_normal([batch_size, split_enc])
-            p_mu_enc = tf.slice(enc_memory, [0, split_enc * 2], [batch_size, memory_dim // 2  - split_enc])
-            p_va_enc = tf.slice(enc_memory, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
-            p_enc = p_mu_enc + tf.exp(p_va_enc / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
-            '''
-        with tf.variable_scope('encoding_pos') as scope_1_2:
-            # positive example
-            # dec_out_pos, enc_memory_pos = inference(examples_pos, batch_size, memory_dim, seq_len, feat_dim)
-            # enc_memory_pos = tf.layers.batch_normalization(encode(examples_pos, memory_dim))
-            with tf.variable_scope('encoding_pos_p') as scope_1_2_1:
-                p_enc_pos = encode(examples_pos, memory_dim - split_enc)
+                scope_1_1.reuse_variables()
+                p_enc_pos = encode(cell, examples_pos)
                 p_enc_pos = leaky_relu(tf.matmul(p_enc_pos, W_enc_p) + b_enc_p)
-            with tf.variable_scope('encoding_pos_s') as scope_1_2_2:
-                s_enc_pos = encode(examples_pos, split_enc)
-                s_enc_pos = leaky_relu(tf.matmul(s_enc_pos, W_enc_s) + b_enc_s)
-            '''
-            s_enc_pos = tf.slice(enc_memory_pos, [0, 0], [batch_size, split_enc])
-            p_enc_pos = tf.slice(enc_memory_pos, [0, split_enc], [batch_size, memory_dim - split_enc])
-            '''
-            '''
-            s_mu_enc_pos = tf.slice(enc_memory_pos, [0, 0], [batch_size, split_enc])
-            s_va_enc_pos = tf.slice(enc_memory_pos, [0, split_enc], [batch_size, split_enc])
-            s_enc_pos = s_mu_enc_pos + tf.exp(s_va_enc_pos / 2) * tf.random_normal([batch_size, split_enc])
-            p_mu_enc_pos = tf.slice(enc_memory_pos, [0, split_enc * 2], [batch_size, memory_dim // 2  - split_enc])
-            p_va_enc_pos = tf.slice(enc_memory_pos, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
-            p_enc_pos = p_mu_enc_pos + tf.exp(p_va_enc_pos / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
-            '''
-        with tf.variable_scope('encoding_neg') as scope_1_3:
-            # negative example
-            # dec_out_neg, enc_memory_neg = inference(examples_neg, batch_size, memory_dim, seq_len, feat_dim)
-            # enc_memory_neg = tf.layers.batch_normalization(encode(examples_neg, memory_dim))
-            with tf.variable_scope('encoding_neg_p') as scope_1_3_1:
-                p_enc_neg = encode(examples_neg, memory_dim - split_enc)
+                p_enc_neg = encode(cell, examples_neg)
                 p_enc_neg = leaky_relu(tf.matmul(p_enc_neg, W_enc_p) + b_enc_p)
-            with tf.variable_scope('encoding_neg_s') as scope_1_3_2:
-                s_enc_neg = encode(examples_neg, split_enc)
+            with tf.variable_scope('encoding_s') as scope_1_2:
+                cell = core_rnn_cell.GRUCell(split_enc, activation=tf.nn.relu)
+                # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
+                s_enc = encode(cell, examples)
+                s_enc = leaky_relu(tf.matmul(s_enc, W_enc_s) + b_enc_s)
+                scope_1_2.reuse_variables()
+                s_enc_pos = encode(cell, examples_pos)
+                s_enc_pos = leaky_relu(tf.matmul(s_enc_pos, W_enc_s) + b_enc_s)
+                s_enc_neg = encode(cell, examples_neg)
                 s_enc_neg = leaky_relu(tf.matmul(s_enc_neg, W_enc_s) + b_enc_s)
-            '''
-            s_enc_neg = tf.slice(enc_memory_neg, [0, 0], [batch_size, split_enc])
-            p_enc_neg = tf.slice(enc_memory_neg, [0, split_enc], [batch_size, memory_dim - split_enc])
-            '''
-            '''
-            s_mu_enc_neg = tf.slice(enc_memory_neg, [0, 0], [batch_size, split_enc])
-            s_va_enc_neg = tf.slice(enc_memory_neg, [0, split_enc], [batch_size, split_enc])
-            s_enc_neg = s_mu_enc_neg + tf.exp(s_va_enc_neg / 2) * tf.random_normal([batch_size, split_enc])
-            p_mu_enc_neg = tf.slice(enc_memory_neg, [0, split_enc * 2], [batch_size, memory_dim // 2  - split_enc])
-            p_va_enc_neg = tf.slice(enc_memory_neg, [0, memory_dim // 2 + split_enc], [batch_size, memory_dim // 2  - split_enc])
-            p_enc_neg = p_mu_enc_neg + tf.exp(p_va_enc_neg / 2) * tf.random_normal([batch_size, memory_dim // 2  - split_enc])
-            '''
-        '''
-        # KL-divergence loss
-        kl_divergence_loss =  - tf.reduce_mean(0.5 * tf.reduce_sum(1 + s_va_enc - tf.square(s_mu_enc) - tf.exp(s_va_enc), 1) \
-                   + 0.5 * tf.reduce_sum(1 + s_va_enc_pos - tf.square(s_mu_enc_pos) - tf.exp(s_va_enc_pos), 1) \
-                   + 0.5 * tf.reduce_sum(1 + s_va_enc_neg - tf.square(s_mu_enc_neg) - tf.exp(s_va_enc_neg), 1)) \
-                   - tf.reduce_mean(0.5 * tf.reduce_sum(1 + p_va_enc - tf.square(p_mu_enc) - tf.exp(p_va_enc), 1) \
-                   + 0.5 * tf.reduce_sum(1 + p_va_enc_pos - tf.square(p_mu_enc_pos) - tf.exp(p_va_enc_pos), 1) \
-                   + 0.5 * tf.reduce_sum(1 + p_va_enc_neg - tf.square(p_mu_enc_neg) - tf.exp(p_va_enc_neg), 1))
-        '''
 
         # speaker_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.nn.sigmoid(s_enc), logits=s_enc_pos))
-        speaker_loss = tf.losses.mean_squared_error(s_enc, s_enc_pos)
-                     # - tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.nn.sigmoid(s_enc), logits=s_enc_neg))
-                     # + (tf.norm(s_enc - s_enc_pos) + tf.norm(s_enc - s_enc_neg)) \
+        # Hinge loss
+        speaker_loss_pos = tf.losses.mean_squared_error(s_enc, s_enc_pos)
+        speaker_loss_neg = - tf.minimum(tf.losses.mean_squared_error(s_enc, s_enc_neg), tf.constant(0.01))
+        speaker_loss = speaker_loss_pos + speaker_loss_neg
 
         # domain-adversarial
         with tf.variable_scope('adversarial_phonetic') as scope_2:
@@ -338,6 +248,8 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=20
             b_adv_1 = tf.get_variable("adv_b_1", shape=[256])
             W_adv_2 = tf.get_variable("adv_w_2", [256, 256])
             b_adv_2 = tf.get_variable("adv_b_2", shape=[256])
+            W_adv_3 = tf.get_variable("adv_w_3", [256, 256])
+            b_adv_3 = tf.get_variable("adv_b_3", shape=[256])
             W_bin = tf.get_variable("bin_w", [256, 1])
             b_bin = tf.get_variable("bin_b", shape=[1])
 
@@ -350,9 +262,10 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=20
                 # pair_hat_norm = tf.contrib.layers.layer_norm(pair_hat)
                 pair_hat_l1 = leaky_relu(tf.matmul(pair_hat, W_adv_1) + b_adv_1)
                 pair_hat_l2 = leaky_relu(tf.matmul(pair_hat_l1, W_adv_2) + b_adv_2)
-                bin_hat = leaky_relu(tf.matmul(pair_hat_l2, W_bin) + b_bin)
+                pair_hat_l3 = leaky_relu(tf.matmul(pair_hat_l2, W_adv_3) + b_adv_3)
+                bin_hat = leaky_relu(tf.matmul(pair_hat_l3, W_bin) + b_bin)
 
-            GP_loss = tf.reduce_mean(tf.sqrt(tf.reduce_sum(tf.gradients(bin_hat, pair_hat)[0]**2, axis=1)) - 1.)**2   
+            GP_loss = tf.reduce_mean((tf.sqrt(tf.reduce_sum(tf.gradients(bin_hat, pair_hat)[0]**2, axis=1)) - 1.)**2)
 
             # discriminator
             with tf.variable_scope('discriminator') as scope_2_2:
@@ -360,16 +273,20 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=20
                 # pair_pos_norm = tf.contrib.layers.layer_norm(pair_pos)
                 pair_pos_l1 = leaky_relu(tf.matmul(pair_pos, W_adv_1) + b_adv_1)
                 pair_pos_l2 = leaky_relu(tf.matmul(pair_pos_l1, W_adv_2) + b_adv_2)
-                bin_pos = leaky_relu(tf.matmul(pair_pos_l2, W_bin) + b_bin)
+                pair_pos_l3 = leaky_relu(tf.matmul(pair_pos_l2, W_adv_3) + b_adv_3)
+                bin_pos = leaky_relu(tf.matmul(pair_pos_l3, W_bin) + b_bin)
 
                 pair_neg = flip_gradient(tf.concat([p_enc, p_enc_neg], 1), l=0.)
                 # pair_neg_norm = tf.contrib.layers.layer_norm(pair_neg)
                 pair_neg_l1 = leaky_relu(tf.matmul(pair_neg, W_adv_1) + b_adv_1)
                 pair_neg_l2 = leaky_relu(tf.matmul(pair_neg_l1, W_adv_2) + b_adv_2)
-                bin_neg = leaky_relu(tf.matmul(pair_neg_l2, W_bin) + b_bin)
+                pair_neg_l3 = leaky_relu(tf.matmul(pair_neg_l2, W_adv_3) + b_adv_3)
+                bin_neg = leaky_relu(tf.matmul(pair_neg_l3, W_bin) + b_bin)
 
-            generate_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)
-            discriminate_loss = tf.losses.mean_squared_error(bin_pos, bin_neg) + 10 * GP_loss
+            # generate_loss = tf.losses.mean_squared_error(bin_pos, bin_neg)
+            # discriminate_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)#  + 10 * GP_loss
+            generate_loss = tf.reduce_mean(bin_pos - bin_neg)
+            discriminate_loss = tf.reduce_mean(bin_neg - bin_pos)
 
             # phonetic_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(bin_pos), logits=bin_pos \
             #               + tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(bin_pos), logits=bin_neg)
@@ -380,9 +297,11 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=20
         b_dec = tf.get_variable("dec_b", shape=[memory_dim])
         # dec_out = decode(examples, batch_size, memory_dim*2, seq_len, feat_dim, enc_memory)
         dec_state = leaky_relu(tf.matmul(tf.concat([s_enc,p_enc], 1), W_dec) + b_dec)
-        dec_out = decode(examples, batch_size, memory_dim, seq_len, feat_dim, dec_state)
+        cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
+        # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
+        dec_out = decode(cell, examples, batch_size, memory_dim, seq_len, feat_dim, dec_state)
         reconstruct_loss = loss(dec_out, examples, seq_len, batch_size, feat_dim) 
-        total_loss = reconstruct_loss + speaker_loss
+        # total_loss = reconstruct_loss + speaker_loss
         ########
         # TODO/#
         ########
@@ -394,17 +313,23 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=20
         # build a graph that grains the model with one batch of examples and
         # updates the model parameters
         t_vars = tf.trainable_variables()
-        g_vars = [var for var in t_vars if not 'discriminator' in var.name]
+        g_vars = [var for var in t_vars if not 'adversarial' in var.name]
+        d_vars = [var for var in t_vars if 'adversarial' in var.name]
+        print ('g_vars:')
+        for var in g_vars:
+            print (var.name)
+        print ('d_vars:')
+        for var in d_vars:
+            print (var.name)
         
-        reconstruct_op = reconstruct_opt(total_loss, learning_rate, 0.9)
-        generate_op = generate_opt(generate_loss, learning_rate, 0.9, g_vars)
-        discriminate_op = discriminate_opt(discriminate_loss, learning_rate, 0.9)
+        # reconstruct_op = reconstruct_opt(reconstruct_loss, learning_rate, 0.9)
+        generate_op = generate_opt(reconstruct_loss+generate_loss+speaker_loss, learning_rate, 0.9, g_vars)
+        discriminate_op = discriminate_opt(discriminate_loss+10*GP_loss, learning_rate, 0.9, d_vars)
 
         # Create a saver.
         saver = tf.train.Saver(tf.all_variables())
         tf.summary.scalar("reconstruct loss", reconstruct_loss)
         tf.summary.scalar("speaker loss", speaker_loss)
-        tf.summary.scalar("total loss", total_loss)
         tf.summary.scalar("generate loss", generate_loss)
         tf.summary.scalar("discriminate loss", discriminate_loss)
         tf.summary.scalar("GP loss", GP_loss)
@@ -445,26 +370,24 @@ def train(fn_list, batch_size, memory_dim, seq_len=50, feat_dim=39, split_enc=20
             try:
                 
                 start_time = time.time()
-                _, r_loss, s_loss, t_loss = sess.run([reconstruct_op, reconstruct_loss, \
-                    speaker_loss, total_loss], feed_dict={learning_rate: feed_lr})
-                _, g_loss = sess.run([generate_op, generate_loss], \
-                    feed_dict={learning_rate: feed_lr})
+                # _, r_loss = sess.run([reconstruct_op, reconstruct_loss], \
+                                             # feed_dict={learning_rate: feed_lr})
+                _, r_loss, g_loss, s_loss, s_pos_loss, s_neg_loss = \
+                    sess.run([generate_op, reconstruct_loss, generate_loss, \
+                              speaker_loss, speaker_loss_pos, speaker_loss_neg], \
+                              feed_dict={learning_rate: feed_lr})
                 for ite in range(5):
-                    _, d_loss, gp_loss = sess.run([discriminate_op, \
-                        discriminate_loss, GP_loss],feed_dict={learning_rate: feed_lr})
+                    _, d_loss, gp_loss = sess.run([discriminate_op, discriminate_loss, GP_loss], \
+                                                  feed_dict={learning_rate: feed_lr})
                 
                 duration = time.time() - start_time
                 example_per_sec = batch_size / duration
                 epoch = floor(batch_size * step / NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
 
                 format_str = ('%s:epoch %d,step %d,LR %.5f,r_loss=%.4f,s_loss=%.4f,'
-                              'g_loss=%.4f,d_loss=%.4f,gp_loss=%.4f')
+                              's_pos_loss=%.4f,s_neg_loss=%.4f,g_loss=%.4f,d_loss=%.4f,gp_loss=%.4f')
                 print (format_str % (datetime.now(), epoch, step, feed_lr, \
-                                     r_loss, s_loss, g_loss, d_loss, gp_loss), end='\n')
-                '''
-                format_str = ('%s:epoch %d,step %d,LR %.5f,r_loss=%.5f,t_loss=%.3f')
-                print (format_str % (datetime.now(), epoch, step, feed_lr, r_loss, t_loss), end='\n')
-                '''
+                                     r_loss, s_loss, s_pos_loss, s_neg_loss, g_loss, d_loss, gp_loss), end='\n')
                 # create time line #
                 #num_examples_per_step = batch_size
                 #tl = timeline.Timeline(run_metadata.step_stats)
@@ -563,7 +486,7 @@ def addParser():
     parser.add_argument('--hidden_dim',type=int, default=100,
         metavar='<--hidden dimension>',
         help='The hidden dimension of a neuron')
-    parser.add_argument('--batch_size',type=int, default=500,
+    parser.add_argument('--batch_size',type=int, default=256,
         metavar='--<batch size>',
         help='The batch size while training')
     parser.add_argument('--max_step',type=int, default=80000,

@@ -149,21 +149,24 @@ def BN_evaluation(fn_list):
         labels = labels[0]
         utterances = utterances[0]
         
-        W_enc_p = tf.get_variable("enc_w_p", [memory_dim - split_enc, memory_dim - split_enc])
-        b_enc_p = tf.get_variable("enc_b_p", shape=[memory_dim - split_enc])
-        W_enc_s = tf.get_variable("enc_w_s", [split_enc, split_enc])
-        b_enc_s = tf.get_variable("enc_b_s", shape=[split_enc])
-        with tf.variable_scope('encoding') as scope_1_1:
-            with tf.variable_scope('encoding_p') as scope_1_1_1:
-                p_enc = audio2vec.encode(examples, memory_dim - split_enc)
+        with tf.variable_scope('encoding') as scope_1:
+            W_enc_p = tf.get_variable("enc_w_p", [memory_dim - split_enc, memory_dim - split_enc])
+            b_enc_p = tf.get_variable("enc_b_p", shape=[memory_dim - split_enc])
+            W_enc_s = tf.get_variable("enc_w_s", [split_enc, split_enc])
+            b_enc_s = tf.get_variable("enc_b_s", shape=[split_enc])
+            with tf.variable_scope('encoding_p') as scope_1_1:
+                cell = core_rnn_cell.GRUCell(memory_dim - split_enc, activation=tf.nn.relu)
+                p_enc = audio2vec.encode(cell, examples)
                 p_enc = audio2vec.leaky_relu(tf.matmul(p_enc, W_enc_p) + b_enc_p)
-            with tf.variable_scope('encoding_s') as scope_1_1_2:
-                s_enc = audio2vec.encode(examples, split_enc)
+            with tf.variable_scope('encoding_s') as scope_1_2:
+                cell = core_rnn_cell.GRUCell(split_enc, activation=tf.nn.relu)
+                s_enc = audio2vec.encode(cell, examples)
                 s_enc = audio2vec.leaky_relu(tf.matmul(s_enc, W_enc_s) + b_enc_s)
         W_dec = tf.get_variable("dec_w", [memory_dim, memory_dim])
         b_dec = tf.get_variable("dec_b", shape=[memory_dim])
         dec_state = audio2vec.leaky_relu(tf.matmul(tf.concat([s_enc,p_enc], 1), W_dec) + b_dec)
-        dec_out = audio2vec.decode(examples, batch_size, memory_dim, seq_len, feat_dim, dec_state)
+        cell = core_rnn_cell.GRUCell(memory_dim, activation=tf.nn.relu)
+        dec_out = audio2vec.decode(cell, examples, batch_size, memory_dim, seq_len, feat_dim, dec_state)
 
         reconstruction_loss = audio2vec.loss(dec_out, examples, seq_len, batch_size, feat_dim) 
         saver = tf.train.Saver(tf.all_variables())

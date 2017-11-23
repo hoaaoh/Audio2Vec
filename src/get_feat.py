@@ -78,7 +78,7 @@ def read_and_save_feat(filename, classify_dic, frame_num_list, path, feat_dim):
                     #print (np_new_frames[0])
                     
                     # with open(path+'/'+str(cls)+'/'+str(int(counter_dic[cls]/FLAG.num_in_ark)) + '.ark','a') as csvfile:
-                    with open(path+'/'+str(cls)+'/'+ID + '.ark','a') as csvfile:
+                    with open(path+'/'+str(cls)+'/'+ID[:-5] + '.ark','a') as csvfile:
                         counter_dic[cls] += 1
                         # csvfile.write(ID+' ')
                         for i in range(len(np_new_frames)):

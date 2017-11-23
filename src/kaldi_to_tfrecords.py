@@ -5,65 +5,11 @@ import os
 import sys
 import random
 from tqdm import tqdm
+import time
 
 import numpy as np
 
 FLAGS = None
-
-def get_ark(ark_file):
-    feats = []
-    ### label is word ID ###
-    labels = []
-    for line in ark_file:
-        line = line.rstrip().split(',')
-        # print (len(arr_ark))
-        # if len(arr_ark) % FLAGS.feats_dim != 1 : return data,0
-        try:
-            feats.append(map(float, line[0:-1]))
-            labels.append([int(float(line[-1]))])
-        except ValueError:
-            print ("Value Error")
-    return feats, labels
-
-def get_ark_and_lab(ark_file):
-   # if line == '': return None, None, None
-
-   # arr = line.split()
-   # key, data = arr[0],  []
-
-   finish, first = False, True
-   for line_ark in ark_file:
-      arr_ark = line_ark.split()
-      if first:
-         first = False
-         if arr_ark[0] != key: raise AssertionError()
-      else:
-         if arr_ark[-1] == ']':
-            arr_ark = arr_ark[:-1]
-            finish = True
-
-         feats = map(float, arr_ark)
-         # if len(feats) != FLAGS.feats_dim: raise AssertionError()
-
-         data.extend(feats)
-
-      if finish: break
-   
-   if FLAGS.norm_var or FLAGS.norm_mean:
-      length = len(data)
-      arr = np.array(data)
-      arr = arr.reshape(length/FLAGS.feats_dim, FLAGS.feats_dim)
-
-      if FLAGS.norm_mean:
-         mean = np.mean(arr, axis = 0)
-         arr  = arr - mean
-      if FLAGS.norm_var:
-         std  = np.std(arr, axis = 0)
-         arr  = arr / std
-
-      data = arr.reshape(length).tolist()
-
-   return (key, data)
 
 def _bytes_feature(value):
    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
@@ -85,41 +31,43 @@ def main(unused_argv):
     file_list = os.listdir(FLAGS.feats_dir)
     num_file = len(file_list)
     file_per_tfrecord = int(num_file/int(FLAGS.num_tfrecords))
+    print ('files per tfrecord: ' + str(file_per_tfrecord))
     tfrecord_id = int(FLAGS.tfrecord_id)
     start_id = tfrecord_id*file_per_tfrecord
     if (tfrecord_id+1)*file_per_tfrecord > num_file:
         end_id = num_file
     else:
         end_id = (tfrecord_id+1)*file_per_tfrecord 
+    print ('start id: ' + str(start_id))
+    print ('end id: ' + str(end_id))
+    count = 0
     feats_dic = {}
     for file in file_list[start_id: end_id]:
         with open(os.path.join(FLAGS.feats_dir, file), 'r') as f:
-            feats_dic[file] = []
+            feats_dic[file] = {}
+            feats_dic[file]['feats'] = []
+            feats_dic[file]['labels'] = []
+            feats_dic[file]['utterances'] = []
+            line_num = 0
             for line in f:
-                feats_dic[file].append(line)
+                line = line.rstrip().split(',')
                 if len(line) == 0:
                     print ("len(line)=0")
                     print (file)
-    count = 0
+                    print (line_num)
+                count += 1
+                line_num += 1
+                feats_dic[file]['feats'].append(list(map(float, line[:-1])))
+                feats_dic[file]['labels'].append([int(float(line[-1]))])
+                feats_dic[file]['utterances'].append([str.encode(file)])
+            feats_dic[file]['len'] = line_num
+            if line_num <= 1:
+                print (file)
     writer = tf.python_io.TFRecordWriter(FLAGS.output)
     for i in tqdm(range(start_id, end_id)):
-        feats = []
-        ### label is word ID ###
-        labels = []
-        utterances = []
-        for line in feats_dic[file_list[i]]:
-            line = line.rstrip().split(',')
-            # print (len(arr_ark))
-            # if len(arr_ark) % FLAGS.feats_dim != 1 : return data,0
-            try:
-                feats.append(list(map(float, line[0:-1])))
-                labels.append([int(float(line[-1]))])
-                utterances.append([str.encode(file_list[i])])
-            except ValueError:
-                print ("Value Error")
-            count += 1
-        # length = len(feats) / FLAGS.feats_dim
-        for feat, label, utterance in zip(feats, labels, utterances):  
+        for feat, label, utterance in zip(feats_dic[file_list[i]]['feats'], \
+                                          feats_dic[file_list[i]]['labels'], feats_dic[file_list[i]]['utterances']): 
+            # time_start = time.time()
             feat_concat = []
             label_concat = []
             utterance_concat = []
@@ -131,31 +79,24 @@ def main(unused_argv):
             utterance_neg = None
 
             # positive pair
-            index = random.choice(range(len(feats)))
-            feat_pos = feats[index]
-            label_pos = labels[index]
-            utterance_pos = utterances[index]
-            # negative pair
-            # file_neg_name = random.choice(file_list)
-            file_neg_name = random.choice(list(feats_dic.keys()))
-            feats_neg = []
-            ### label is word ID ###
-            labels_neg = []
-            utterances_neg = []
-            for line in feats_dic[file_neg_name]:
-                line = line.rstrip().split(',')
-                # print (len(arr_ark))
-                # if len(arr_ark) % FLAGS.feats_dim != 1 : return data,0
-                try:
-                    feats_neg.append(list(map(float, line[0:-1])))
-                    labels_neg.append([int(float(line[-1]))])
-                    utterances_neg.append([str.encode(file_neg_name)])
-                except ValueError:
-                    print ("Value Error")
-            if feats_neg == None or len(feats_neg) == 0:
-                print ('@_@')
+            if feats_dic[file_list[i]]['len'] == 0:
+                print (file_list[i])
                 continue
-            index = random.choice(range(len(feats_neg)))
+            index = random.choice(range(feats_dic[file_list[i]]['len']))
+            feat_pos = feats_dic[file_list[i]]['feats'][index]
+            label_pos = feats_dic[file_list[i]]['labels'][index]
+            utterance_pos = feats_dic[file_list[i]]['utterances'][index]
+            # negative pair
+            neg_range = list(range(start_id, end_id))
+            neg_range.remove(i)
+            index_neg = random.choice(neg_range)
+            feats_neg = feats_dic[file_list[index_neg]]['feats']
+            labels_neg = feats_dic[file_list[index_neg]]['labels']
+            utterances_neg = feats_dic[file_list[index_neg]]['utterances']
+            if feats_dic[file_list[index_neg]]['len'] == 0:
+                print (file_list[index_neg])
+                continue
+            index = random.choice(range(feats_dic[file_list[index_neg]]['len']))
             feat_neg = feats_neg[index]
             label_neg = labels_neg[index]
             utterance_neg = utterances_neg[index]

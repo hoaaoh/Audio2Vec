@@ -17,8 +17,8 @@ feat_dir=/home_local/grtzsohalf/yeeee
 dim=$1
 #model_dir=$path/exp/model_lr${init_lr}_gf${gradient_flip}/$dim
 #log_dir=$path/exp/log_lr${init_lr}_gf${gradient_flip}/$dim
-model_dir=$path/exp/model_lr${init_lr}_iter_train_5/$dim
-log_dir=$path/exp/log_lr${init_lr}_iter_train_5/$dim
+model_dir=$path/exp/model_lr${init_lr}_hinge/$dim
+log_dir=$path/exp/log_lr${init_lr}_hinge/$dim
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
 device_id=$2
@@ -52,7 +52,8 @@ if [ ! -f $feat_dir/extracted ];then
   # done_count=$((0))
   # file_list=($feat_dir/feats/50/*)
   # for file in $feat_dir/feats/50/*
-  num_tfrecords=100
+  num_tfrecords=10
+  #for ((i=7;i<8;++i))
   for ((i=0;i<${num_tfrecords};++i))
   do
     # outname=$(basename "$file")
@@ -78,8 +79,8 @@ if [ ! -f $feat_dir/train_AE.scp ] && [ ! -f $feat_dir/query_AE.scp ] && [ ! -f 
 then
 #   tail -n 1 $feat_dir/all_AE.scp > $tmp
 #   head -n -1 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
-  head -n -10 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
-  tail -n 10 $feat_dir/all_AE.scp > $feat_dir/test_AE.scp
+  head -n -1 $feat_dir/all_AE.scp > $feat_dir/train_AE.scp
+  tail -n 1 $feat_dir/all_AE.scp > $feat_dir/test_AE.scp
   # cat $tmp | head -n 5 > $feat_dir/query_AE.scp 
   # cat $tmp | tail -n 25 > $feat_dir/corpus_AE.scp
   rm $tmp
