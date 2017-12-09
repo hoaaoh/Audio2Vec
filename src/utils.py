@@ -55,15 +55,18 @@ def batch_pair_data(feats, spk2feat, feat2label, feat_indices, spk_list):
         spk = feat2label[idx][1]
 
         # feat_pos
-        feat_pos = feats[random.choice(spk2feat[spk])]
+        idx_pos = random.choice(spk2feat[spk])
+        feat_pos = feats[idx_pos]
 
         # feat_neg
         spk_list.remove(spk)
         rand_spk = random.choice(spk_list)
         spk_list.append(spk)
-        feat_neg = feats[random.choice(spk2feat[rand_spk])]
+        idx_neg = random.choice(spk2feat[rand_spk])
+        feat_neg = feats[idx_neg]
         batch_data.append(feat)
         batch_data_pos.append(feat_pos)
         batch_data_neg.append(feat_neg)
+        # print (spk + ': (' + str(idx) + ', ' + str(idx_pos) + ') <---> ' + rand_spk + ': ' + str(idx_neg))
     return np.array(batch_data, dtype=np.float32), np.array(batch_data_pos, dtype=np.float32), \
         np.array(batch_data_neg, dtype=np.float32)

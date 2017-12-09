@@ -22,7 +22,7 @@ class Audio2Vec(object):
     def leaky_relu(self, x, alpha=0.01):
         return tf.maximum(x, alpha*x)
 
-    def rnn_encode(self, cell, feat, stack_num=2):
+    def rnn_encode(self, cell, feat, stack_num=3):
         # examples_norm = tf.contrib.layers.layer_norm(examples)
         # _, (c, enc_state) = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
         feat_perm = tf.transpose (feat, perm=[1,0,2])
@@ -117,7 +117,7 @@ class Audio2Vec(object):
                      W_bin, b_bin, p_enc, p_enc_pos, p_enc_neg)
         return GP_loss, discrimination_loss
 
-    def rnn_decode(self, cell, feat, enc_memory, stack_num=2):
+    def rnn_decode(self, cell, feat, enc_memory, stack_num=3):
         dec_inp = (tf.unstack(tf.zeros([self.seq_len, self.batch_size, self.feat_dim], dtype=tf.float32, name="GO")))
         with tf.variable_scope("stack_rnn_decoder"):
             dec_cell = copy.copy(cell)

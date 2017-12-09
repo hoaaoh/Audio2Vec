@@ -9,7 +9,7 @@ if [ $# != 5 ] ; then
   exit 1
 fi
 
-init_lr=0.0001
+init_lr=0.0005
 batch_size=32
 seq_len=50
 feat_dim=39
@@ -20,8 +20,8 @@ s_dim=$2
 device_id=$3
 n_epochs=$4
 model_type=$5
-model_dir=$path/exp/model_lr${init_lr}_negspk0.1_$p_dim\_$s_dim\_$model_type
-log_dir=$path/exp/log_lr${init_lr}_negspk0.1_$p_dim\_$s_dim\_$model_type
+model_dir=$path/exp/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
+log_dir=$path/exp/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
 

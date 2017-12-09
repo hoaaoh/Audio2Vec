@@ -99,14 +99,14 @@ class Solver(object):
             feats = self.feats_train
             spk2feat = self.spk2feat_train
             feat2label = self.feat2label_train
-            spk = self.spk_train
+            spk_list = self.spk_train
         else:
             feat_order = list(range(self.n_feats_test))
             n_batches = self.n_batches_test
             feats = self.feats_test
             spk2feat = self.spk2feat_test
             feat2label = self.feat2label_test
-            spk = self.spk_test
+            spk_list = self.spk_test
         r_total_loss_value = 0.
         s_pos_total_loss_value = 0.
         s_neg_total_loss_value = 0.
@@ -118,7 +118,7 @@ class Solver(object):
             end_idx = start_idx + self.batch_size
             feat_indices = feat_order[start_idx:end_idx]
             batch_examples, batch_examples_pos, batch_examples_neg = \
-                batch_pair_data(feats, spk2feat, feat2label, feat_indices, spk)
+                batch_pair_data(feats, spk2feat, feat2label, feat_indices, spk_list)
             batch_examples = batch_examples.reshape((self.batch_size, self.seq_len, self.feat_dim))
             batch_examples_pos = batch_examples_pos.reshape((self.batch_size, self.seq_len, self.feat_dim))
             batch_examples_neg = batch_examples_neg.reshape((self.batch_size, self.seq_len, self.feat_dim))
@@ -208,11 +208,13 @@ class Solver(object):
         g_vars = [var for var in t_vars if not 'adversarial' in var.name]
         d_vars = [var for var in t_vars if 'adversarial' in var.name]
         
-        self.generate_op = self.generate_opt(reconstruction_loss + generation_loss + speaker_loss_pos
-                                   + speaker_loss_neg, self.init_lr, 0.9, g_vars)
         if self.model_type == 'default':
+            self.generate_op = self.generate_opt(reconstruction_loss + generation_loss + speaker_loss_pos
+                                       + speaker_loss_neg, self.init_lr, 0.9, g_vars)
             self.discriminate_op = self.discriminate_opt(discrimination_loss + 10*GP_loss,
-                                           self.init_lr, 0.9, d_vars)
+                                       self.init_lr, 0.9, d_vars)
+        else:
+            self.generate_op = self.generate_opt(reconstruction_loss, self.init_lr, 0.9, g_vars)
 
         # Create a saver.
         saver = tf.train.Saver(tf.all_variables(), max_to_keep=100)
