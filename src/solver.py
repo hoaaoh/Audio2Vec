@@ -258,13 +258,13 @@ class Solver(object):
         for epoch in range(self.n_epochs):
             print ("Start of Epoch: " + str(epoch) + "!")
             random.shuffle(feat_order)
-            self.compute_loss('train', sess, summary_writer, int(epoch), feat_order, reconstruction_loss, generation_loss, \
+            self.compute_loss('train', sess, summary_writer, epoch, feat_order, reconstruction_loss, generation_loss, \
                      speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, None, None)
-            self.compute_loss('test', sess, summary_writer, int(epoch), feat_order, reconstruction_loss, generation_loss, \
+            self.compute_loss('test', sess, summary_writer, epoch, feat_order, reconstruction_loss, generation_loss, \
                      speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, None, None)
 
             ckpt = self.model_dir + '/model.ckpt'
-            saver.save(sess, ckpt, global_step=epoch)
+            saver.save(sess, ckpt, global_step=epoch+global_step)
             print ("End of Epoch: " + str(epoch) + "!")
         summary_writer.flush()
 
