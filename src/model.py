@@ -7,7 +7,8 @@ from tensorflow.python.framework import dtypes
 import copy
         
 class Audio2Vec(object):
-    def __init__(self, batch_size, p_memory_dim, s_memory_dim, seq_len, feat_dim):
+    def __init__(self, model_type, batch_size, p_memory_dim, s_memory_dim, seq_len, feat_dim):
+        self.model_type = model_type
         self.batch_size = batch_size
         self.p_memory_dim = p_memory_dim
         self.s_memory_dim = s_memory_dim
@@ -21,7 +22,7 @@ class Audio2Vec(object):
     def leaky_relu(self, x, alpha=0.01):
         return tf.maximum(x, alpha*x)
 
-    def rnn_encode(self, cell, feat, stack_num=1):
+    def rnn_encode(self, cell, feat, stack_num=2):
         # examples_norm = tf.contrib.layers.layer_norm(examples)
         # _, (c, enc_state) = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
         feat_perm = tf.transpose (feat, perm=[1,0,2])
@@ -116,7 +117,7 @@ class Audio2Vec(object):
                      W_bin, b_bin, p_enc, p_enc_pos, p_enc_neg)
         return GP_loss, discrimination_loss
 
-    def rnn_decode(self, cell, feat, enc_memory, stack_num=1):
+    def rnn_decode(self, cell, feat, enc_memory, stack_num=2):
         dec_inp = (tf.unstack(tf.zeros([self.seq_len, self.batch_size, self.feat_dim], dtype=tf.float32, name="GO")))
         with tf.variable_scope("stack_rnn_decoder"):
             dec_cell = copy.copy(cell)
@@ -183,17 +184,25 @@ class Audio2Vec(object):
         p_enc, p_enc_pos, p_enc_neg, s_enc, s_enc_pos, s_enc_neg = \
             self.encode(feat, feat_pos, feat_neg)
 
-        # Hinge loss
-        speaker_loss_pos = tf.losses.mean_squared_error(s_enc, s_enc_pos)
-        speaker_loss_neg = - tf.reduce_mean(tf.maximum(tf.constant(0.01)
-                            - tf.norm(s_enc - s_enc_neg, axis=1), tf.constant(0.)))
+        if self.model_type == 'default':
+            # Hinge loss
+            speaker_loss_pos = tf.losses.mean_squared_error(s_enc, s_enc_pos)
+            speaker_loss_neg = tf.reduce_mean(tf.maximum(tf.constant(0.01)
+                                - tf.norm(s_enc - s_enc_neg, axis=1), tf.constant(0.)))
 
-        # Adversarial training
-        GP_loss, discrimination_loss = self.adversarial_training(p_enc, p_enc_pos, p_enc_neg)
-        generation_loss = - discrimination_loss 
+            # Adversarial training
+            GP_loss, discrimination_loss = self.adversarial_training(p_enc, p_enc_pos, p_enc_neg)
+            generation_loss = - discrimination_loss 
+            dec_out = self.decode(p_enc, s_enc_pos, feat)
+        else:
+            speaker_loss_pos = tf.constant(0.0)
+            speaker_loss_neg = tf.constant(0.0)
+            GP_loss = tf.constant(0.0)
+            discrimination_loss = tf.constant(0.0)
+            generation_loss = tf.constant(0.0)
+            dec_out = self.decode(p_enc, s_enc, feat)
 
         # Reconstruction loss
-        dec_out = self.decode(p_enc, s_enc_pos, feat)
         reconstruction_loss = self.rec_loss(dec_out, feat)
 
         return reconstruction_loss, generation_loss, discrimination_loss, \

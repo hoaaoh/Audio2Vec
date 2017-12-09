@@ -26,16 +26,11 @@ def addParser():
     parser.add_argument('--feat_dim',type=int, default=39,
         metavar='--<feat dim>',
         help='feature dimension')
-    parser.add_argument('--n_epochs',type=int, default=20,
-        metavar='--<# of epochs for training>',
-        help='The number of epochs for training')
 
     parser.add_argument('log_dir', 
         metavar='<log directory>')
     parser.add_argument('model_dir', 
         metavar='<model directory>')
-    parser.add_argument('train_feat_scp', 
-        metavar='<training feature scp file>')    
     parser.add_argument('test_feat_scp', 
         metavar='<testing feature scp file>')    
     parser.add_argument('feat_dir', 
@@ -47,9 +42,9 @@ def addParser():
     return parser
 
 def main():
-    solver = Solver(FLAG.feat_dir, FLAG.train_feat_scp, FLAG.test_feat_scp, FLAG.batch_size,
+    solver = Solver(FLAG.feat_dir, None, FLAG.test_feat_scp, FLAG.batch_size,
                     FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
-                    FLAG.log_dir, FLAG.model_dir, FLAG.n_epochs)
+                    FLAG.log_dir, FLAG.model_dir, None)
     print "Solver constructed!"
     solver.test(FLAG.word_dir, FLAG.utter_dir)
 

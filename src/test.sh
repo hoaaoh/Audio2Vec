@@ -2,13 +2,13 @@
 
 [ -f path.sh ] && . ./path.sh
 
-# if [ $# != 6 ] ; then 
-#   echo "usage: train_origin.sh <feat_dir> <hidden_dim> <model_dir> <log_dir> <CUDA_DEVICE> <max step for training>"
-#   echo "e.g. train_origin.sh ./feat 100 ./model ./logs 1 80000"
-#   echo "The feat dir should conatin:"
-#   echo "cmvned_feats.ark all.scp all_prons words.txt"
-#   exit 1
-# fi
+if [ $# != 4 ] ; then 
+  echo "usage: train.sh <p_hidden_dim> <s_hidden_dim> <CUDA_DEVICE> <model type>"
+  echo "model_type: default, noGANspk"
+  echo "e.g. train.sh 128 128 0 default"
+  exit 1
+fi
+
 init_lr=0.0005
 batch_size=32
 seq_len=50
@@ -17,12 +17,13 @@ path=/home/grtzsohalf/Audio2Vec
 feat_dir=/home_local/grtzsohalf/yeeee
 p_dim=$1
 s_dim=$2
-model_dir=$path/exp/model_lr${init_lr}_negspk0.1_$p_dim\_$s_dim
-log_dir=$path/exp/log_lr${init_lr}_negspk0.1_$p_dim\_$s_dim
+device_id=$3
+n_epochs=$4
+model_type=$5
+model_dir=$path/exp/model_lr${init_lr}_negspk0.1_$p_dim\_$s_dim\_$model_type
+log_dir=$path/exp/log_lr${init_lr}_negspk0.1_$p_dim\_$s_dim\_$model_type
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
-device_id=$2
-n_epochs=$4
 
 mkdir -p $feat_dir/feats
 mkdir -p $model_dir

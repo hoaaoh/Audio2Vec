@@ -40,10 +40,12 @@ def addParser():
         metavar='<testing feature scp file>')    
     parser.add_argument('feat_dir', 
         metavar='<feature directory>')    
+    parser.add_argument('model_type', 
+        metavar='<model type>')    
     return parser
 
 def main():
-    solver = Solver(FLAG.feat_dir, FLAG.train_feat_scp, FLAG.test_feat_scp, FLAG.batch_size,
+    solver = Solver(FLAG.model_type, FLAG.feat_dir, FLAG.train_feat_scp, FLAG.test_feat_scp, FLAG.batch_size,
                     FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
                     FLAG.log_dir, FLAG.model_dir, FLAG.n_epochs)
     print "Solver constructed!"
