@@ -7,7 +7,7 @@ from datetime import datetime
 from model import Audio2Vec
 from utils import *
 
-n_files = 20
+n_files = 100
 proportion = 0.9
 
 class Solver(object):
@@ -228,12 +228,12 @@ class Solver(object):
         t_vars = tf.trainable_variables()
         g_vars = [var for var in t_vars if not 'adversarial' in var.name]
         d_vars = [var for var in t_vars if 'adversarial' in var.name]
-        print ("### G_vars ###")
-        for g in g_vars:
-            print (g)
-        print ("### D_vars ###")
-        for d in d_vars:
-            print (d)
+        # print ("### G_vars ###")
+        # for g in g_vars:
+            # print (g)
+        # print ("### D_vars ###")
+        # for d in d_vars:
+            # print (d)
         
         if self.model_type == 'default':
             self.generate_op = self.generate_opt(reconstruction_loss + generation_loss + speaker_loss_pos

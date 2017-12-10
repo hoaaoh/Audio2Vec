@@ -48,7 +48,7 @@ def main():
     solver = Solver(FLAG.model_type, FLAG.stack_num, FLAG.feat_dir, None, FLAG.test_feat_scp, FLAG.batch_size,
                     FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
                     FLAG.log_dir, FLAG.model_dir, None)
-    print "Solver constructed!"
+    print ("Solver constructed!")
     solver.test(FLAG.word_dir, FLAG.spk_dir)
 
 if __name__ == '__main__':

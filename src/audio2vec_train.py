@@ -51,7 +51,7 @@ def main():
     solver = Solver(FLAG.model_type, FLAG.stack_num, FLAG.feat_dir, FLAG.train_feat_scp, FLAG.test_feat_scp, 
                     FLAG.batch_size, FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
                     FLAG.log_dir, FLAG.model_dir, FLAG.n_epochs)
-    print "Solver constructed!"
+    print ("Solver constructed!")
     solver.train()
 
 if __name__ == '__main__':

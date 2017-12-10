@@ -2,25 +2,25 @@
 
 [ -f path.sh ] && . ./path.sh
 
-if [ $# != 5 ] ; then 
-  echo "usage: train.sh <p_hidden_dim> <s_hidden_dim> <CUDA_DEVICE> <n_epochs for training> <model type>"
+if [ $# != 6 ] ; then 
+  echo "usage: train.sh <lr> <p_hidden_dim> <s_hidden_dim> <CUDA_DEVICE> <model type> <n_epochs for training>"
   echo "model_type: default, noGAN, noGANspk"
-  echo "e.g. train.sh 128 128 0 20 default"
+  echo "e.g. train.sh 0.0005 128 128 0 default 20"
   exit 1
 fi
 
-init_lr=0.0005
 batch_size=32
 seq_len=50
 feat_dim=39
 stack_num=3
 path=/home/grtzsohalf/Audio2Vec
 feat_dir=/home_local/grtzsohalf/yeeee
-p_dim=$1
-s_dim=$2
-device_id=$3
-n_epochs=$4
+init_lr=$1
+p_dim=$2
+s_dim=$3
+device_id=$4
 model_type=$5
+n_epochs=$6
 
 if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_type" != "noGANspk" ] ; then
   echo "Invalid model_type!"
@@ -40,6 +40,6 @@ mkdir -p $tf_log_dir
 
 ### training ###
 export CUDA_VISIBLE_DEVICES=$device_id
-python $path/src/audio2vec_train.py --init_lr=$init_lr --batch_size=$batch_size --seq_len=$seq_len --feat_dim=$feat_dim \
+python3 $path/src/audio2vec_train.py --init_lr=$init_lr --batch_size=$batch_size --seq_len=$seq_len --feat_dim=$feat_dim \
   --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --n_epochs=$n_epochs --stack_num=$stack_num $tf_log_dir $tf_model_dir \
   $feat_dir/train_AE.scp $feat_dir/test_AE.scp $feat_dir $model_type 2> $tf_log_dir/train.log
