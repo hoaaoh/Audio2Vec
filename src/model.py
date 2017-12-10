@@ -25,11 +25,9 @@ class Audio2Vec(object):
     def rnn_encode(self, cell, feat, stack_num=1):
         # examples_norm = tf.contrib.layers.layer_norm(examples)
         # _, (c, enc_state) = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
-        feat_perm = tf.transpose (feat, perm=[1,0,2])
-        unstacked_feat = tf.unstack(feat_perm, self.seq_len)
         with tf.variable_scope("stack_rnn_encoder"):
             enc_cell = copy.copy(cell)
-            enc_output, enc_state = core_rnn.static_rnn(enc_cell, unstacked_feat, dtype=dtypes.float32)
+            enc_output, enc_state = core_rnn.static_rnn(enc_cell, feat, dtype=dtypes.float32)
             for i in range(2, stack_num):
                 with tf.variable_scope("stack_rnn_encoder_"+str(i)):
                     enc_cell = copy.copy(cell)
@@ -176,9 +174,9 @@ class Audio2Vec(object):
         return reconstruction_loss
 
     def build_model(self):
-        feat = self.feat
-        feat_pos = self.feat_pos
-        feat_neg = self.feat_neg
+        feat = tf.unstack(tf.transpose (self.feat, perm=[1,0,2]), self.seq_len)
+        feat_pos = tf.unstack(tf.transpose (self.feat_pos, perm=[1,0,2]), self.seq_len)
+        feat_neg = tf.unstack(tf.transpose (self.feat_neg, perm=[1,0,2]), self.seq_len)
 
         # Encode
         p_enc, p_enc_pos, p_enc_neg, s_enc, s_enc_pos, s_enc_neg = \
