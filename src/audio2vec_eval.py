@@ -26,6 +26,9 @@ def addParser():
     parser.add_argument('--feat_dim',type=int, default=39,
         metavar='--<feat dim>',
         help='feature dimension')
+    parser.add_argument('--stack_num',type=int, default=3,
+        metavar='--<number of rnn stacks>',
+        help='number of rnn stacks')
 
     parser.add_argument('log_dir', 
         metavar='<log directory>')
@@ -37,16 +40,16 @@ def addParser():
         metavar='<feature directory>')    
     parser.add_argument('word_dir', 
         metavar='<word bottleneck directory>')    
-    parser.add_argument('utter_dir', 
-        metavar='<utter bottleneck directory>')    
+    parser.add_argument('spk_dir', 
+        metavar='<spk bottleneck directory>')    
     return parser
 
 def main():
-    solver = Solver(FLAG.feat_dir, None, FLAG.test_feat_scp, FLAG.batch_size,
+    solver = Solver(FLAG.model_type, FLAG.stack_num, FLAG.feat_dir, None, FLAG.test_feat_scp, FLAG.batch_size,
                     FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
                     FLAG.log_dir, FLAG.model_dir, None)
     print "Solver constructed!"
-    solver.test(FLAG.word_dir, FLAG.utter_dir)
+    solver.test(FLAG.word_dir, FLAG.spk_dir)
 
 if __name__ == '__main__':
     parser = addParser()

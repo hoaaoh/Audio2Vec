@@ -7,8 +7,9 @@ from tensorflow.python.framework import dtypes
 import copy
         
 class Audio2Vec(object):
-    def __init__(self, model_type, batch_size, p_memory_dim, s_memory_dim, seq_len, feat_dim):
+    def __init__(self, model_type, stack_num, batch_size, p_memory_dim, s_memory_dim, seq_len, feat_dim):
         self.model_type = model_type
+        self.stack_num = stack_num
         self.batch_size = batch_size
         self.p_memory_dim = p_memory_dim
         self.s_memory_dim = s_memory_dim
@@ -22,13 +23,13 @@ class Audio2Vec(object):
     def leaky_relu(self, x, alpha=0.01):
         return tf.maximum(x, alpha*x)
 
-    def rnn_encode(self, cell, feat, stack_num=1):
+    def rnn_encode(self, cell, feat):
         # examples_norm = tf.contrib.layers.layer_norm(examples)
         # _, (c, enc_state) = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
         with tf.variable_scope("stack_rnn_encoder"):
             enc_cell = copy.copy(cell)
             enc_output, enc_state = core_rnn.static_rnn(enc_cell, feat, dtype=dtypes.float32)
-            for i in range(2, stack_num):
+            for i in range(2, self.stack_num):
                 with tf.variable_scope("stack_rnn_encoder_"+str(i)):
                     enc_cell = copy.copy(cell)
                     enc_output, enc_state = core_rnn.static_rnn(enc_cell, enc_output, dtype=dtypes.float32)
@@ -115,12 +116,12 @@ class Audio2Vec(object):
                      W_bin, b_bin, p_enc, p_enc_pos, p_enc_neg)
         return GP_loss, discrimination_loss
 
-    def rnn_decode(self, cell, enc_memory, stack_num=1):
+    def rnn_decode(self, cell, enc_memory):
         dec_inp = (tf.unstack(tf.zeros([self.seq_len, self.batch_size, self.feat_dim], dtype=tf.float32, name="GO")))
         with tf.variable_scope("stack_rnn_decoder"):
             dec_cell = copy.copy(cell)
             dec_output, dec_state = seq2seq.rnn_decoder(dec_inp, enc_memory, dec_cell)
-            for i in range(2, stack_num):
+            for i in range(2, self.stack_num):
                 with tf.variable_scope("stack_rnn_decoder_"+str(i)):
                     dec_cell = copy.copy(cell)
                     dec_output, dec_state = core_rnn.static_rnn(dec_cell, dec_output, dtype=dtypes.float32)

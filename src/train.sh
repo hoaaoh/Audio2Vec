@@ -13,6 +13,7 @@ init_lr=0.0005
 batch_size=32
 seq_len=50
 feat_dim=39
+stack_num=3
 path=/home/grtzsohalf/Audio2Vec
 feat_dir=/home_local/grtzsohalf/yeeee
 p_dim=$1
@@ -34,5 +35,5 @@ mkdir -p $tf_log_dir
 ### training ###
 export CUDA_VISIBLE_DEVICES=$device_id
 python $path/src/audio2vec_train.py --init_lr=$init_lr --batch_size=$batch_size --seq_len=$seq_len --feat_dim=$feat_dim \
-  --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --n_epochs=$n_epochs $tf_log_dir $tf_model_dir $feat_dir/train_AE.scp \
-  $feat_dir/test_AE.scp $feat_dir $model_type 2> $tf_log_dir/train.log
+  --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --n_epochs=$n_epochs --stack_num=$stack_num $tf_log_dir $tf_model_dir \
+  $feat_dir/train_AE.scp $feat_dir/test_AE.scp $feat_dir $model_type 2> $tf_log_dir/train.log

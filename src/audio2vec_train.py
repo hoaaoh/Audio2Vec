@@ -29,6 +29,9 @@ def addParser():
     parser.add_argument('--n_epochs',type=int, default=20,
         metavar='--<# of epochs for training>',
         help='The number of epochs for training')
+    parser.add_argument('--stack_num',type=int, default=3,
+        metavar='--<number of rnn stacks>',
+        help='number of rnn stacks')
 
     parser.add_argument('log_dir', 
         metavar='<log directory>')
@@ -45,8 +48,8 @@ def addParser():
     return parser
 
 def main():
-    solver = Solver(FLAG.model_type, FLAG.feat_dir, FLAG.train_feat_scp, FLAG.test_feat_scp, FLAG.batch_size,
-                    FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
+    solver = Solver(FLAG.model_type, FLAG.stack_num, FLAG.feat_dir, FLAG.train_feat_scp, FLAG.test_feat_scp, 
+                    FLAG.batch_size, FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
                     FLAG.log_dir, FLAG.model_dir, FLAG.n_epochs)
     print "Solver constructed!"
     solver.train()

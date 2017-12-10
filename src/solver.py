@@ -11,9 +11,10 @@ n_files = 20
 proportion = 0.9
 
 class Solver(object):
-    def __init__(self, model_type, feat_dir, train_feat_scp, test_feat_scp, batch_size, seq_len, feat_dim,
+    def __init__(self, model_type, stack_num, feat_dir, train_feat_scp, test_feat_scp, batch_size, seq_len, feat_dim,
                  p_memory_dim, s_memory_dim, init_lr, log_dir, model_dir, n_epochs):
         self.model_type = model_type
+        self.stack_num=stack_num
         self.feat_dir = feat_dir
         self.train_feat_scp = train_feat_scp
         self.test_feat_scp = test_feat_scp
@@ -26,7 +27,7 @@ class Solver(object):
         self.log_dir = log_dir
         self.model_dir = model_dir
         self.n_epochs = n_epochs
-        self.model = Audio2Vec(model_type, batch_size, p_memory_dim, s_memory_dim, seq_len, feat_dim)
+        self.model = Audio2Vec(model_type, stack_num, batch_size, p_memory_dim, s_memory_dim, seq_len, feat_dim)
 
         self.generate_op = None
         self.discriminate_op = None
