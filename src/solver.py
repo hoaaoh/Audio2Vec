@@ -68,11 +68,11 @@ class Solver(object):
         # train_op = optimizer.minimize(loss)
         return train_op
 
-    def save_batch_BN(self, word_dir, utter_dir, p_memories, s_memories, feat_indices):
+    def save_batch_BN(self, word_dir, spk_dir, p_memories, s_memories, feat_indices):
         """Getting Bottleneck Features"""
         for i in range(self.batch_size):
             word = self.feat2label_test[feat_indices[i]][0]
-            utter = self.feat2label_test[feat_indices[i]][1]
+            spk = self.feat2label_test[feat_indices[i]][1]
             p_single_memory = p_memories[i]
             s_single_memory = s_memories[i]
             p_single_memory = p_single_memory.tolist()
@@ -84,17 +84,19 @@ class Solver(object):
                         word_file.write(',')
                     else:
                         word_file.write('\n')
-            with open(utter_dir+'/'+str(utter), 'a') as utter_file:
+            with open(spk_dir+'/'+str(spk), 'a') as spk_file:
                 for j, s in enumerate(s_single_memory):
-                    utter_file.write(str(s))
+                    spk_file.write(str(s))
                     if j != len(s_single_memory)-1:
-                        utter_file.write(',')
+                        spk_file.write(',')
                     else:
-                        utter_file.write('\n')
+                        spk_file.write('\n')
 
-    def compute_loss(self, mode, sess, summary_writer, epoch, feat_order, reconstruction_loss, generation_loss, \
-                     speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc, word_dir, utter_dir):
+    def compute_loss(self, mode, sess, summary_writer, epoch, reconstruction_loss, generation_loss, \
+                     speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc, word_dir, spk_dir):
         if mode == 'train':
+            feat_order = list(range(self.n_feats_train))
+            random.shuffle(feat_order)
             n_batches = self.n_batches_train
             feats = self.feats_train
             spk2feat = self.spk2feat_train
@@ -117,6 +119,7 @@ class Solver(object):
             start_idx = step * self.batch_size
             end_idx = start_idx + self.batch_size
             feat_indices = feat_order[start_idx:end_idx]
+            # print (feat_indices)
             batch_examples, batch_examples_pos, batch_examples_neg = \
                 batch_pair_data(feats, spk2feat, feat2label, feat_indices, spk_list)
             batch_examples = batch_examples.reshape((self.batch_size, self.seq_len, self.feat_dim))
@@ -156,7 +159,7 @@ class Solver(object):
                                         self.model.feat_pos: batch_examples_pos,
                                         self.model.feat_neg: batch_examples_neg})
                 if summary_writer == None:
-                    self.save_batch_BN(word_dir, utter_dir, p_memories, s_memories, feat_indices)
+                    self.save_batch_BN(word_dir, spk_dir, p_memories, s_memories, feat_indices)
             r_total_loss_value += r_loss
             s_pos_total_loss_value += s_pos_loss
             s_neg_total_loss_value += s_neg_loss
@@ -207,6 +210,12 @@ class Solver(object):
         t_vars = tf.trainable_variables()
         g_vars = [var for var in t_vars if not 'adversarial' in var.name]
         d_vars = [var for var in t_vars if 'adversarial' in var.name]
+        print ("### G_vars ###")
+        for g in g_vars:
+            print (g)
+        print ("### D_vars ###")
+        for d in d_vars:
+            print (d)
         
         if self.model_type == 'default':
             self.generate_op = self.generate_opt(reconstruction_loss + generation_loss + speaker_loss_pos
@@ -249,7 +258,6 @@ class Solver(object):
             = load_data(feats_dir, self.train_feat_scp)
         self.n_feats_test, self.feats_test, self.spk2feat_test, self.feat2label_test, self.spk_test \
             = load_data(feats_dir, self.test_feat_scp)
-        feat_order = list(range(self.n_feats_train))
         self.n_batches_train = self.n_feats_train // self.batch_size
         self.n_batches_test = self.n_feats_test // self.batch_size
 
@@ -257,10 +265,9 @@ class Solver(object):
         print ("Start batch training.")
         for epoch in range(self.n_epochs):
             print ("Start of Epoch: " + str(epoch) + "!")
-            random.shuffle(feat_order)
-            self.compute_loss('train', sess, summary_writer, epoch, feat_order, reconstruction_loss, generation_loss, \
+            self.compute_loss('train', sess, summary_writer, epoch, reconstruction_loss, generation_loss, \
                      speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, None, None)
-            self.compute_loss('test', sess, summary_writer, epoch, feat_order, reconstruction_loss, generation_loss, \
+            self.compute_loss('test', sess, summary_writer, epoch, reconstruction_loss, generation_loss, \
                      speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, None, None)
 
             ckpt = self.model_dir + '/model.ckpt'
@@ -268,7 +275,7 @@ class Solver(object):
             print ("End of Epoch: " + str(epoch) + "!")
         summary_writer.flush()
 
-    def test(self, word_dir, utter_dir):
+    def test(self, word_dir, spk_dir):
         """ Testing seq2seq for AudioVec."""
         reconstruction_loss, generation_loss, discrimination_loss, \
             GP_loss, speaker_loss_pos, speaker_loss_neg, p_enc, s_enc = \
@@ -305,6 +312,6 @@ class Solver(object):
         self.n_batches_test = self.n_feats_test // self.batch_size
 
         ### Start testing ###
-        self.compute_loss('test', sess, None, None, None, reconstruction_loss, generation_loss, \
-                 speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, word_dir, utter_dir)
+        self.compute_loss('test', sess, None, None, reconstruction_loss, generation_loss, \
+                 speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, word_dir, spk_dir)
 

@@ -22,7 +22,7 @@ class Audio2Vec(object):
     def leaky_relu(self, x, alpha=0.01):
         return tf.maximum(x, alpha*x)
 
-    def rnn_encode(self, cell, feat, stack_num=3):
+    def rnn_encode(self, cell, feat, stack_num=1):
         # examples_norm = tf.contrib.layers.layer_norm(examples)
         # _, (c, enc_state) = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
         feat_perm = tf.transpose (feat, perm=[1,0,2])
@@ -117,7 +117,7 @@ class Audio2Vec(object):
                      W_bin, b_bin, p_enc, p_enc_pos, p_enc_neg)
         return GP_loss, discrimination_loss
 
-    def rnn_decode(self, cell, feat, enc_memory, stack_num=3):
+    def rnn_decode(self, cell, enc_memory, stack_num=1):
         dec_inp = (tf.unstack(tf.zeros([self.seq_len, self.batch_size, self.feat_dim], dtype=tf.float32, name="GO")))
         with tf.variable_scope("stack_rnn_decoder"):
             dec_cell = copy.copy(cell)
@@ -137,7 +137,7 @@ class Audio2Vec(object):
             dec_proj_outputs = tf.matmul(W_p, dec_reshape) + b_p
         return dec_proj_outputs
 
-    def decode(self, p_enc, s_enc, feat):
+    def decode(self, p_enc, s_enc):
         with tf.variable_scope('decode') as scope_3:
             W_dec = tf.get_variable("dec_w", [self.p_memory_dim+self.s_memory_dim, \
                                               self.p_memory_dim+self.s_memory_dim])
@@ -146,7 +146,7 @@ class Audio2Vec(object):
             dec_state = self.leaky_relu(tf.matmul(tf.concat([p_enc,s_enc], 1), W_dec) + b_dec)
             cell = core_rnn_cell.GRUCell(self.p_memory_dim+self.s_memory_dim, activation=tf.nn.relu)
             # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
-            dec_out = self.rnn_decode(cell, feat, dec_state)
+            dec_out = self.rnn_decode(cell, dec_state)
         return dec_out
 
     def rec_loss(self, dec_out, feat):
@@ -193,14 +193,14 @@ class Audio2Vec(object):
             # Adversarial training
             GP_loss, discrimination_loss = self.adversarial_training(p_enc, p_enc_pos, p_enc_neg)
             generation_loss = - discrimination_loss 
-            dec_out = self.decode(p_enc, s_enc_pos, feat)
+            dec_out = self.decode(p_enc, s_enc_pos)
         else:
             speaker_loss_pos = tf.constant(0.0)
             speaker_loss_neg = tf.constant(0.0)
             GP_loss = tf.constant(0.0)
             discrimination_loss = tf.constant(0.0)
             generation_loss = tf.constant(0.0)
-            dec_out = self.decode(p_enc, s_enc, feat)
+            dec_out = self.decode(p_enc, s_enc)
 
         # Reconstruction loss
         reconstruction_loss = self.rec_loss(dec_out, feat)
