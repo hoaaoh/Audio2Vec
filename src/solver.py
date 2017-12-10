@@ -51,7 +51,7 @@ class Solver(object):
         
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5, beta2=momentum)
         gvs = optimizer.compute_gradients(loss, var_list=var_list)
-        capped_gvs = [(grad if grad is None else tf.clip_by_value(grad, -10., 10.), var) for grad, var in gvs]
+        capped_gvs = [(grad if grad is None else tf.clip_by_value(grad, -5., 5.), var) for grad, var in gvs]
         train_op = optimizer.apply_gradients(capped_gvs)
 
         # train_op = optimizer.minimize(loss, var_list=var_list)
@@ -63,7 +63,7 @@ class Solver(object):
         
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.5, beta2=momentum)
         gvs = optimizer.compute_gradients(loss, var_list=var_list)
-        capped_gvs = [(grad if grad is None else tf.clip_by_value(grad, -10., 10.), var) for grad, var in gvs]
+        capped_gvs = [(grad if grad is None else tf.clip_by_value(grad, -5., 5.), var) for grad, var in gvs]
         train_op = optimizer.apply_gradients(capped_gvs)
 
         # train_op = optimizer.minimize(loss)
@@ -141,15 +141,24 @@ class Solver(object):
                                                       feed_dict={self.model.feat: batch_examples,
                                                                  self.model.feat_pos: batch_examples_pos,
                                                                  self.model.feat_neg: batch_examples_neg})
+                elif self.model_type == 'noGAN':
+                    _, r_loss, s_pos_loss, s_neg_loss = \
+                        sess.run([self.generate_op, reconstruction_loss, speaker_loss_pos, speaker_loss_neg], \
+                                 feed_dict={self.model.feat: batch_examples,
+                                            self.model.feat_pos: batch_examples_pos,
+                                            self.model.feat_neg: batch_examples_neg})
+                    g_loss = 0.0
+                    d_loss = 0.0
+                    gp_loss = 0.0
                 else:
                     _, r_loss, = \
                         sess.run([self.generate_op, reconstruction_loss], \
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
-                    g_loss = 0
-                    s_pos_loss = 0
-                    s_neg_loss = 0
+                    g_loss = 0.0
+                    s_pos_loss = 0.0
+                    s_neg_loss = 0.0
                     d_loss = 0.0
                     gp_loss = 0.0
 

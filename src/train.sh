@@ -4,7 +4,7 @@
 
 if [ $# != 5 ] ; then 
   echo "usage: train.sh <p_hidden_dim> <s_hidden_dim> <CUDA_DEVICE> <n_epochs for training> <model type>"
-  echo "model_type: default, noGANspk"
+  echo "model_type: default, noGAN, noGANspk"
   echo "e.g. train.sh 128 128 0 20 default"
   exit 1
 fi
@@ -21,6 +21,12 @@ s_dim=$2
 device_id=$3
 n_epochs=$4
 model_type=$5
+
+if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_type" != "noGANspk" ] ; then
+  echo "Invalid model_type!"
+  exit 1
+fi
+
 model_dir=$path/exp/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 log_dir=$path/exp/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 tf_model_dir=$model_dir/tf_model

@@ -4,7 +4,7 @@
 
 if [ $# != 4 ] ; then 
   echo "usage: train.sh <p_hidden_dim> <s_hidden_dim> <CUDA_DEVICE> <model type>"
-  echo "model_type: default, noGANspk"
+  echo "model_type: default, noGAN, noGANspk"
   echo "e.g. train.sh 128 128 0 default"
   exit 1
 fi
@@ -22,7 +22,7 @@ device_id=$3
 n_epochs=$4
 model_type=$5
 
-if [$model_type != default] && [$model_type != noGANspk] ; then
+if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_type" != "noGANspk" ] ; then
   echo "Invalid model_type!"
   exit 1
 fi

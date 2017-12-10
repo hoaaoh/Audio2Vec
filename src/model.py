@@ -192,13 +192,28 @@ class Audio2Vec(object):
             # Adversarial training
             GP_loss, discrimination_loss = self.adversarial_training(p_enc, p_enc_pos, p_enc_neg)
             generation_loss = - discrimination_loss 
+
             dec_out = self.decode(p_enc, s_enc_pos)
+
+        elif self.model_type == 'noGAN':
+            # Hinge loss
+            speaker_loss_pos = tf.losses.mean_squared_error(s_enc, s_enc_pos)
+            speaker_loss_neg = tf.reduce_mean(tf.maximum(tf.constant(0.01)
+                                - tf.norm(s_enc - s_enc_neg, axis=1), tf.constant(0.)))
+
+            GP_loss = tf.constant(0.0)
+            discrimination_loss = tf.constant(0.0)
+            generation_loss = tf.constant(0.0)
+
+            dec_out = self.decode(p_enc, s_enc_pos)
+
         else:
             speaker_loss_pos = tf.constant(0.0)
             speaker_loss_neg = tf.constant(0.0)
             GP_loss = tf.constant(0.0)
             discrimination_loss = tf.constant(0.0)
             generation_loss = tf.constant(0.0)
+
             dec_out = self.decode(p_enc, s_enc)
 
         # Reconstruction loss
