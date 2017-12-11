@@ -27,8 +27,13 @@ if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_t
   exit 1
 fi
 
-model_dir=$path/exp/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
-log_dir=$path/exp/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
+exp_dir=/home_local/grtzsohalf/yeeee/exp
+mkdir -p $exp_dir
+model_dir=$exp_dir/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
+log_dir=$exp_dir/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
+
+#model_dir=$path/exp/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
+#log_dir=$path/exp/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
 

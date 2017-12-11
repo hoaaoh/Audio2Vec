@@ -93,7 +93,7 @@ class Solver(object):
                     else:
                         spk_file.write('\n')
 
-    def compute_loss(self, mode, sess, summary_writer, epoch, reconstruction_loss, generation_loss, \
+    def compute_loss(self, mode, sess, summary_writer, summary_op, epoch, reconstruction_loss, generation_loss, \
                      speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc, word_dir, spk_dir):
         if mode == 'train':
             feat_order = list(range(self.n_feats_train))
@@ -116,6 +116,7 @@ class Solver(object):
         g_total_loss_value = 0.
         d_total_loss_value = 0.
         gp_total_loss_value = 0.
+        summary = None
         for step in range(n_batches):
             start_idx = step * self.batch_size
             end_idx = start_idx + self.batch_size
@@ -130,20 +131,21 @@ class Solver(object):
             if mode == 'train':
                 start_time = time.time()
                 if self.model_type == 'default':
-                    _, r_loss, g_loss, s_pos_loss, s_neg_loss = \
-                        sess.run([self.generate_op, reconstruction_loss, generation_loss, \
+                    _, summary, r_loss, g_loss, s_pos_loss, s_neg_loss = \
+                        sess.run([self.generate_op, summary_op, reconstruction_loss, generation_loss, \
                                   speaker_loss_pos, speaker_loss_neg], \
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
                     for ite in range(3):
-                        _, d_loss, gp_loss = sess.run([self.discriminate_op, discrimination_loss, GP_loss],
+                        _, summary, d_loss, gp_loss = \
+                            sess.run([self.discriminate_op, summary_op, discrimination_loss, GP_loss],
                                                       feed_dict={self.model.feat: batch_examples,
                                                                  self.model.feat_pos: batch_examples_pos,
                                                                  self.model.feat_neg: batch_examples_neg})
                 elif self.model_type == 'noGAN':
-                    _, r_loss, s_pos_loss, s_neg_loss = \
-                        sess.run([self.generate_op, reconstruction_loss, speaker_loss_pos, speaker_loss_neg], \
+                    _, summary, r_loss, s_pos_loss, s_neg_loss = \
+                        sess.run([self.generate_op, summary_op, reconstruction_loss, speaker_loss_pos, speaker_loss_neg], \
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
@@ -151,8 +153,8 @@ class Solver(object):
                     d_loss = 0.0
                     gp_loss = 0.0
                 else:
-                    _, r_loss, = \
-                        sess.run([self.generate_op, reconstruction_loss], \
+                    _, summary, r_loss, = \
+                        sess.run([self.generate_op, summary_op, reconstruction_loss], \
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
@@ -170,8 +172,8 @@ class Solver(object):
                     print (format_str % (datetime.now(), epoch, step, \
                                          r_loss, s_pos_loss, s_neg_loss, g_loss, d_loss, gp_loss))
             else:
-                r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
-                    sess.run([reconstruction_loss, generation_loss, \
+                summary, r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
+                    sess.run([summary_op, reconstruction_loss, generation_loss, \
                               speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc], \
                              feed_dict={self.model.feat: batch_examples,
                                         self.model.feat_pos: batch_examples_pos,
@@ -191,23 +193,8 @@ class Solver(object):
         d_avg_loss = d_total_loss_value/n_batches
         gp_avg_loss = gp_total_loss_value/n_batches
         if summary_writer != None:
-            summary = tf.Summary()
-            if mode == 'train':
-                summary.value.add(tag='r loss', simple_value=r_avg_loss)
-                summary.value.add(tag='s_pos loss', simple_value=s_pos_avg_loss)
-                summary.value.add(tag='s_neg loss', simple_value=s_neg_avg_loss)
-                summary.value.add(tag='g loss', simple_value=g_avg_loss)
-                summary.value.add(tag='d loss', simple_value=d_avg_loss)
-                summary.value.add(tag='gp loss', simple_value=gp_avg_loss)
-                summary_writer.add_summary(summary, epoch)
-            else:
-                summary.value.add(tag='r loss eval', simple_value=r_avg_loss)
-                summary.value.add(tag='s_pos eval loss', simple_value=s_pos_avg_loss)
-                summary.value.add(tag='s_neg eval loss', simple_value=s_neg_avg_loss)
-                summary.value.add(tag='g eval loss', simple_value=g_avg_loss)
-                summary.value.add(tag='d eval loss', simple_value=d_avg_loss)
-                summary.value.add(tag='gp eval loss', simple_value=gp_avg_loss)
-                summary_writer.add_summary(summary, epoch)
+            summary_writer.add_summary(summary, epoch)
+            summary_writer.flush()
         if mode != 'train':
             print ('%s: average r_loss for eval = %.5f' % (datetime.now(), r_avg_loss))
             print ('%s: average s_pos_loss for eval = %.5f' % (datetime.now(), s_pos_avg_loss))
@@ -254,7 +241,22 @@ class Solver(object):
         config.gpu_options.allow_growth = True
         sess = tf.Session(config=config)
         sess.run(init)
-        sess.graph.finalize()
+        # sess.graph.finalize()
+
+        summary_train = [tf.summary.scalar("reconstruction loss", reconstruction_loss),
+                        tf.summary.scalar("speaker loss pos", speaker_loss_pos),
+                        tf.summary.scalar("speaker loss neg", speaker_loss_neg),
+                        tf.summary.scalar("generation loss", generation_loss),
+                        tf.summary.scalar("discrimination loss", discrimination_loss),
+                        tf.summary.scalar("GP loss", GP_loss)]
+        summary_test = [tf.summary.scalar("reconstrucion loss eval", reconstruction_loss),
+                        tf.summary.scalar("speaker loss pos eval", speaker_loss_pos),
+                        tf.summary.scalar("speaker loss neg eval", speaker_loss_neg),
+                        tf.summary.scalar("generation loss eval", generation_loss),
+                        tf.summary.scalar("discrimination loss eval", discrimination_loss),
+                        tf.summary.scalar("GP loss eval", GP_loss)]
+        summary_op_train = tf.summary.merge(summary_train)
+        summary_op_test = tf.summary.merge(summary_test)
         summary_writer = tf.summary.FileWriter(self.log_dir, sess.graph)
 
         ### Restore the model ###
@@ -283,10 +285,12 @@ class Solver(object):
         print ("Start batch training.")
         for epoch in range(self.n_epochs):
             print ("Start of Epoch: " + str(epoch) + "!")
-            self.compute_loss('train', sess, summary_writer, epoch, reconstruction_loss, generation_loss, \
-                     speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, None, None)
-            self.compute_loss('test', sess, summary_writer, epoch, reconstruction_loss, generation_loss, \
-                     speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, None, None)
+            self.compute_loss('train', sess, summary_writer, summary_op_train, epoch, reconstruction_loss, 
+                              generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
+                              GP_loss, p_enc, s_enc, None, None)
+            self.compute_loss('test', sess, summary_writer, summary_op_test, epoch, reconstruction_loss, 
+                              generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
+                              GP_loss, p_enc, s_enc, None, None)
 
             ckpt = self.model_dir + '/model.ckpt'
             saver.save(sess, ckpt, global_step=epoch+global_step)
@@ -330,6 +334,6 @@ class Solver(object):
         self.n_batches_test = self.n_feats_test // self.batch_size
 
         ### Start testing ###
-        self.compute_loss('test', sess, None, None, reconstruction_loss, generation_loss, \
+        self.compute_loss('test', sess, None, None, None, reconstruction_loss, generation_loss, \
                  speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, word_dir, spk_dir)
 
