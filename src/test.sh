@@ -26,8 +26,13 @@ if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_t
   exit 1
 fi
 
-model_dir=$path/exp/model_lr${init_lr}_negspk0.1_$p_dim\_$s_dim\_$model_type
-log_dir=$path/exp/log_lr${init_lr}_negspk0.1_$p_dim\_$s_dim\_$model_type
+exp_dir=/home_local/grtzsohalf/yeeee/exp
+mkdir -p $exp_dir
+model_dir=$exp_dir/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
+log_dir=$exp_dir/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
+
+#model_dir=$path/exp/model_lr${init_lr}_negspk0.1_$p_dim\_$s_dim\_$model_type
+#log_dir=$path/exp/log_lr${init_lr}_negspk0.1_$p_dim\_$s_dim\_$model_type
 tf_model_dir=$model_dir/tf_model
 tf_log_dir=$log_dir/tf_log
 
@@ -36,11 +41,19 @@ mkdir -p $model_dir
 mkdir -p $log_dir
 mkdir -p $tf_model_dir
 mkdir -p $tf_log_dir
+mkdir -p $feat_dir/words_words_AE_test
+mkdir -p $feat_dir/words_spks_AE_test
+mkdir -p $feat_dir/spks_words_AE_test
+mkdir -p $feat_dir/spks_spks_AE_test
+
 ### testing ###
 export CUDA_VISIBLE_DEVICES=$device_id
 python3 $path/src/audio2vec_eval.py --init_lr=$init_lr --batch_size=$batch_size --seq_len=$seq_len --feat_dim=$feat_dim \
-  --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --stack_num=$stack_num $tf_log_dir $tf_model_dir $feat_dir/test_AE.scp 
-$feat_dir $model_type $feat_dir/words_AE_test $feat_dir/spks_AE_test 2> $tf_log_dir/test.log 
+  --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --stack_num=$stack_num $tf_log_dir $tf_model_dir $feat_dir/test_AE.scp \
+$feat_dir $model_type $feat_dir/words_words_AE_test $feat_dir/words_spks_AE_test \
+$feat_dir/spks_words_AE_test $feat_dir/spks_spks_AE_test  
 
-$path/src/trans_dir_to_file.py $feat_dir/words_AE_test $feat_dir/test_AE_words
-$path/src/trans_dir_to_file.py $feat_dir/spks_AE_test $feat_dir/test_AE_spks
+python3 $path/src/trans_dir_to_file.py $feat_dir/words_words_AE_test $feat_dir/test_AE_words_words
+python3 $path/src/trans_dir_to_file.py $feat_dir/words_spks_AE_test $feat_dir/test_AE_words_spks
+python3 $path/src/trans_dir_to_file.py $feat_dir/spks_words_AE_test $feat_dir/test_AE_spks_words
+python3 $path/src/trans_dir_to_file.py $feat_dir/spks_spks_AE_test $feat_dir/test_AE_spks_spks

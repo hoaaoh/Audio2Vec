@@ -38,10 +38,16 @@ def addParser():
         metavar='<testing feature scp file>')    
     parser.add_argument('feat_dir', 
         metavar='<feature directory>')    
-    parser.add_argument('word_dir', 
-        metavar='<word bottleneck directory>')    
-    parser.add_argument('spk_dir', 
-        metavar='<spk bottleneck directory>')    
+    parser.add_argument('model_type', 
+        metavar='<model type>')    
+    parser.add_argument('word_word_dir', 
+        metavar='<word word bottleneck directory>')    
+    parser.add_argument('word_spk_dir', 
+        metavar='<word spk bottleneck directory>')    
+    parser.add_argument('spk_word_dir', 
+        metavar='<spk word bottleneck directory>')    
+    parser.add_argument('spk_spk_dir', 
+        metavar='<spk spk bottleneck directory>')    
     return parser
 
 def main():
@@ -49,7 +55,7 @@ def main():
                     FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
                     FLAG.log_dir, FLAG.model_dir, None)
     print ("Solver constructed!")
-    solver.test(FLAG.word_dir, FLAG.spk_dir)
+    solver.test(FLAG.word_word_dir, FLAG.word_spk_dir, FLAG.spk_word_dir, FLAG.spk_spk_dir)
 
 if __name__ == '__main__':
     parser = addParser()

@@ -69,23 +69,37 @@ class Solver(object):
         # train_op = optimizer.minimize(loss)
         return train_op
 
-    def save_batch_BN(self, word_dir, spk_dir, p_memories, s_memories, feat_indices):
+    def save_batch_BN(self, word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, p_memories, s_memories, feat_indices):
         """Getting Bottleneck Features"""
         for i in range(self.batch_size):
             word = self.feat2label_test[feat_indices[i]][0]
-            spk = self.feat2label_test[feat_indices[i]][1]
+            spk = self.feat2label_test[feat_indices[i]][1][:-4]
             p_single_memory = p_memories[i]
             s_single_memory = s_memories[i]
             p_single_memory = p_single_memory.tolist()
             s_single_memory = s_single_memory.tolist()
-            with open(word_dir+'/'+str(word), 'a') as word_file:
+            with open(word_word_dir+'/'+str(word), 'a') as word_file:
                 for j, p in enumerate(p_single_memory):
                     word_file.write(str(p))
                     if j != len(p_single_memory)-1:
                         word_file.write(',')
                     else:
                         word_file.write('\n')
-            with open(spk_dir+'/'+str(spk), 'a') as spk_file:
+            with open(word_spk_dir+'/'+str(spk), 'a') as word_file:
+                for j, p in enumerate(p_single_memory):
+                    word_file.write(str(p))
+                    if j != len(p_single_memory)-1:
+                        word_file.write(',')
+                    else:
+                        word_file.write('\n')
+            with open(spk_word_dir+'/'+str(word), 'a') as spk_file:
+                for j, s in enumerate(s_single_memory):
+                    spk_file.write(str(s))
+                    if j != len(s_single_memory)-1:
+                        spk_file.write(',')
+                    else:
+                        spk_file.write('\n')
+            with open(spk_spk_dir+'/'+str(spk), 'a') as spk_file:
                 for j, s in enumerate(s_single_memory):
                     spk_file.write(str(s))
                     if j != len(s_single_memory)-1:
@@ -93,8 +107,9 @@ class Solver(object):
                     else:
                         spk_file.write('\n')
 
-    def compute_loss(self, mode, sess, summary_writer, summary_op, epoch, reconstruction_loss, generation_loss, \
-                     speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc, word_dir, spk_dir):
+    def compute_loss(self, mode, sess, summary_writer, summary_op, epoch, reconstruction_loss, generation_loss,
+                     speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc, 
+                     word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir):
         if mode == 'train':
             feat_order = list(range(self.n_feats_train))
             random.shuffle(feat_order)
@@ -172,14 +187,22 @@ class Solver(object):
                     print (format_str % (datetime.now(), epoch, step, \
                                          r_loss, s_pos_loss, s_neg_loss, g_loss, d_loss, gp_loss))
             else:
-                summary, r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
-                    sess.run([summary_op, reconstruction_loss, generation_loss, \
-                              speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc], \
-                             feed_dict={self.model.feat: batch_examples,
-                                        self.model.feat_pos: batch_examples_pos,
-                                        self.model.feat_neg: batch_examples_neg})
                 if summary_writer == None:
-                    self.save_batch_BN(word_dir, spk_dir, p_memories, s_memories, feat_indices)
+                    r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
+                        sess.run([reconstruction_loss, generation_loss, \
+                                  speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc], \
+                                 feed_dict={self.model.feat: batch_examples,
+                                            self.model.feat_pos: batch_examples_pos,
+                                            self.model.feat_neg: batch_examples_neg})
+                    self.save_batch_BN(word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, 
+                                       p_memories, s_memories, feat_indices)
+                else:
+                    summary, r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
+                        sess.run([summary_op, reconstruction_loss, generation_loss, \
+                                  speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc], \
+                                 feed_dict={self.model.feat: batch_examples,
+                                            self.model.feat_pos: batch_examples_pos,
+                                            self.model.feat_neg: batch_examples_neg})
             r_total_loss_value += r_loss
             s_pos_total_loss_value += s_pos_loss
             s_neg_total_loss_value += s_neg_loss
@@ -287,17 +310,17 @@ class Solver(object):
             print ("Start of Epoch: " + str(epoch) + "!")
             self.compute_loss('train', sess, summary_writer, summary_op_train, epoch, reconstruction_loss, 
                               generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
-                              GP_loss, p_enc, s_enc, None, None)
+                              GP_loss, p_enc, s_enc, None, None, None, None)
             self.compute_loss('test', sess, summary_writer, summary_op_test, epoch, reconstruction_loss, 
                               generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
-                              GP_loss, p_enc, s_enc, None, None)
+                              GP_loss, p_enc, s_enc, None, None, None, None)
 
             ckpt = self.model_dir + '/model.ckpt'
             saver.save(sess, ckpt, global_step=epoch+global_step)
             print ("End of Epoch: " + str(epoch) + "!")
         summary_writer.flush()
 
-    def test(self, word_dir, spk_dir):
+    def test(self, word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir):
         """ Testing seq2seq for AudioVec."""
         reconstruction_loss, generation_loss, discrimination_loss, \
             GP_loss, speaker_loss_pos, speaker_loss_neg, p_enc, s_enc = \
@@ -335,5 +358,6 @@ class Solver(object):
 
         ### Start testing ###
         self.compute_loss('test', sess, None, None, None, reconstruction_loss, generation_loss, \
-                 speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, word_dir, spk_dir)
+                 speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, \
+                          word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir)
 
