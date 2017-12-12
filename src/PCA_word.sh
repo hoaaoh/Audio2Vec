@@ -1,7 +1,7 @@
 [ -f path.sh ] && . ./path.sh
 path=/home/grtzsohalf/Desktop/Audio2Vec
 
-train_file=$path/test_AE_words
+train_file=$path/$1
 word_dic=$path/words.txt
 target_words=$path/test_words
 

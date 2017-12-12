@@ -25,9 +25,11 @@ def TSNE_2d_plotting(feat_trans, ax):
 
 def main():
     ### preprocessing ###
-    feats, labs = reader.read_csv_file(FLAG.trans_file)
-
-    dic, rev_dic = reader.build_dic(FLAG.word_dic)
+    label_type = 'words'
+    if FLAG.trans_file[-4:] == 'spks':
+        label_type = 'spks'
+    feats, labs = reader.read_csv_file(FLAG.trans_file, label_type)
+    dic, rev_dic = reader.build_dic(FLAG.word_dic, label_type)
     targets = reader.build_targets(FLAG.target_words, dic)
     test_feat_dic = PCA.extract_targets(feats, labs, targets)
     word_color_dict = reader.build_label_color_list(targets, color_list)
