@@ -69,7 +69,8 @@ class Solver(object):
         # train_op = optimizer.minimize(loss)
         return train_op
 
-    def save_batch_BN(self, word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, p_memories, s_memories, feat_indices):
+    def save_batch_BN(self, word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file,
+                      p_memories, s_memories, feat_indices):
         """Getting Bottleneck Features"""
         for i in range(self.batch_size):
             word = self.feat2label_test[feat_indices[i]][0]
@@ -78,6 +79,11 @@ class Solver(object):
             s_single_memory = s_memories[i]
             p_single_memory = p_single_memory.tolist()
             s_single_memory = s_single_memory.tolist()
+            with open(phonetic_file, 'a') as ph_file:
+                for j, p in enumerate(p_single_memory):
+                    ph_file.write(str(p) + ' ')
+                    if j == len(p_single_memory)-1:
+                        ph_file.write(str(int(float(word))) + '\n')
             with open(word_word_dir+'/'+str(word), 'a') as word_file:
                 for j, p in enumerate(p_single_memory):
                     word_file.write(str(p))
@@ -109,7 +115,7 @@ class Solver(object):
 
     def compute_loss(self, mode, sess, summary_writer, summary_op, epoch, reconstruction_loss, generation_loss,
                      speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc, 
-                     word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir):
+                     word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file):
         if mode == 'train':
             feat_order = list(range(self.n_feats_train))
             random.shuffle(feat_order)
@@ -194,7 +200,7 @@ class Solver(object):
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
-                    self.save_batch_BN(word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, 
+                    self.save_batch_BN(word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file,
                                        p_memories, s_memories, feat_indices)
                 else:
                     summary, r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
@@ -310,17 +316,17 @@ class Solver(object):
             print ("Start of Epoch: " + str(epoch) + "!")
             self.compute_loss('train', sess, summary_writer, summary_op_train, epoch, reconstruction_loss, 
                               generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
-                              GP_loss, p_enc, s_enc, None, None, None, None)
+                              GP_loss, p_enc, s_enc, None, None, None, None, None)
             self.compute_loss('test', sess, summary_writer, summary_op_test, epoch, reconstruction_loss, 
                               generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
-                              GP_loss, p_enc, s_enc, None, None, None, None)
+                              GP_loss, p_enc, s_enc, None, None, None, None, None)
 
             ckpt = self.model_dir + '/model.ckpt'
             saver.save(sess, ckpt, global_step=epoch+global_step)
             print ("End of Epoch: " + str(epoch) + "!")
         summary_writer.flush()
 
-    def test(self, word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir):
+    def test(self, word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file):
         """ Testing seq2seq for AudioVec."""
         reconstruction_loss, generation_loss, discrimination_loss, \
             GP_loss, speaker_loss_pos, speaker_loss_neg, p_enc, s_enc = \
@@ -359,5 +365,5 @@ class Solver(object):
         ### Start testing ###
         self.compute_loss('test', sess, None, None, None, reconstruction_loss, generation_loss, \
                  speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, \
-                          word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir)
+                          word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file)
 

@@ -9,8 +9,8 @@ if [ $# != 6 ] ; then
   exit 1
 fi
 
-batch_size=32
-seq_len=50
+batch_size=64
+seq_len=70
 feat_dim=39
 stack_num=3
 path=/home/grtzsohalf/Audio2Vec
