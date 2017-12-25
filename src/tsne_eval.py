@@ -25,8 +25,11 @@ def TSNE_2d_plotting(feat_trans, ax):
 
 def main():
     ### preprocessing ###
-    feats, labs = reader.read_csv_file(FLAG.trans_file)
-    dic, rev_dic = reader.build_dic(FLAG.word_dic)
+    label_type = 'words'
+    if FLAG.trans_file[-4:] == 'spks':
+        label_type = 'spks'
+    feats, labs = reader.read_csv_file(FLAG.trans_file, label_type)
+    dic, rev_dic = reader.build_dic(FLAG.word_dic, label_type)
     targets = reader.build_targets(FLAG.target_words, dic)
     test_feat_dic = PCA.extract_targets(feats, labs, targets)
     word_color_dict = reader.build_label_color_list(targets, color_list)
@@ -34,13 +37,17 @@ def main():
     ave_test_feat_dic = PCA.average_over_words(test_feat_dic)
     ave_test_feat_list = [ ave_test_feat_dic[i] for i in ave_test_feat_dic]
     test_all_feats, test_all_delta_labs = PCA.target_dic2list(test_feat_dic)
+    print (len(test_all_feats))
 
-    ave_num_feats, ave_num_lab = PCA.average_over_words_num(test_feat_dic, targets)
+    # ave_num_feats, ave_num_lab = PCA.average_over_words_num(test_feat_dic, targets)
+    ave_num_feats, ave_num_lab = test_all_feats, test_all_delta_labs
+    print (len(ave_num_feats))
     #ave_num_feats, ave_num_lab = PCA.target_dic2list(ave_num_feat_lists)
     #sampled_feats, sampled_delta_lab = PCA.sampling(test_all_feats,
     #    test_all_delta_labs)
     sampled_feats, _ = PCA.PCA_transform(ave_num_feats)
     ave_test_feat_trans = PCA.TSNE_transform(sampled_feats, FLAG.tsne_dim)
+    print (len(ave_test_feat_trans))
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax = PCA.plot_all_color(ave_test_feat_trans, ave_num_lab, rev_dic, ax, 

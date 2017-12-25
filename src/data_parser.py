@@ -4,24 +4,31 @@ import argparse
 import numpy as np
 import csv
 
-def read_csv_file(filename, delimiter=' '):
+def read_csv_file(filename, label_type, delimiter=' '):
     labs = []
     feats = []
     with open(filename, 'r') as f:
         reader = csv.reader(f, delimiter=delimiter)
         for row in reader:
             feats.append(list(map(float,row[:-1])))
-            labs.append(int(float(row[-1])))
+            if label_type == 'words':
+                labs.append(int(float(row[-1])))
+            else:
+                labs.append(row[-1])
     return feats, labs
 
-def build_dic(filename):
+def build_dic(filename, label_type):
     dic = {}
     rev_dic = {}
     with open(filename,'r') as f:
         for line in f:
             word, ID= line.rstrip().split()
-            dic[word] = int(ID)
-            rev_dic[int(ID)] = word
+            if label_type == 'words':
+                dic[word] = int(ID)
+                rev_dic[int(ID)] = word
+            else:
+                dic[word] = ID
+                rev_dic[ID] = word
 
     return dic, rev_dic
 
