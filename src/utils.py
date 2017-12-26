@@ -28,19 +28,34 @@ def load_data(feats_dir, scp_file):
     feat2label = {}
     spk_list = []
     count = 0
-    with open(scp_file, 'r') as fin1:
-        for line in tqdm(fin1):
+    feats_walk_dir, seq_len = feats_dir.rsplit('/', 1)
+    seq_len = int(seq_len)
+    with open(scp_file, 'r') as f:
+        for line in tqdm(f):
             line = line[:-1]
+            print(line)
             spk_list.append(line)
-            spk_indices = []
-            with open(os.path.join(feats_dir, line), 'r') as fin2:
-                for feat in fin2:
-                    feat = feat.split(',')
-                    feats.append(list(map(float, feat[:-1])))
-                    feat2label[count] = (feat[-1][:-1], line)
-                    spk_indices.append(count)
-                    count += 1
-                spk2feat[line] = spk_indices
+    for root, dirs, files in os.walk(feats_walk_dir):
+        for filename in files:
+            if '0.npy' in filename:
+                continue
+            spk = filename.split('-')[0] + '.ark'
+            if spk in spk_list:
+                count = len(feats)
+                feat = np.squeeze(np.load(os.path.join(root, filename))).T
+                feat_dims = feat.shape[1]
+                if feat.shape[0] < seq_len:
+                    data = np.zeros((seq_len, feat_dims))
+                    data[:feat.shape[0], :feat.shape[1]] = feat
+                    feat = data
+                else:
+                    feat = feat[:seq_len, :]
+                feats.append(feat.flatten().astype(np.float32))
+                feat2label[count] = (filename.split('_')[-1][:-4], spk)
+                if spk not in spk2feat:
+                    spk2feat[spk] = []
+                spk2feat[spk].append(count)
+    count = len(feats)
     print ('# of words: ' + str(count))
     return count, feats, spk2feat, feat2label, spk_list
 

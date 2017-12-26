@@ -1,5 +1,5 @@
 [ -f path.sh ] && . ./path.sh
-path=/home/grtzsohalf/Desktop/Audio2Vec
+path=/home/nanhao/Audio2vec
 
 train_file=$path/$1
 spk_dic=$path/spks.txt

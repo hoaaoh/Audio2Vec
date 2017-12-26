@@ -42,6 +42,8 @@ def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat
     for i in frame_num_list:
         counter_dic[i] = 0
     filtered_lines = []
+
+    # cmvn...ark
     with open(filename,'r') as f:
         line_id = 0
         for line in f:

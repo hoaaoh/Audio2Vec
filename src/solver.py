@@ -302,7 +302,7 @@ class Solver(object):
 
         ### Load data  ###
         feats_dir = os.path.join(self.feat_dir, 'feats', str(self.seq_len))
-        split_data(self.feat_dir, n_files, proportion, self.seq_len)
+        # split_data(self.feat_dir, n_files, proportion, self.seq_len)
         self.n_feats_train, self.feats_train, self.spk2feat_train, self.feat2label_train, self.spk_train \
             = load_data(feats_dir, self.train_feat_scp)
         self.n_feats_test, self.feats_test, self.spk2feat_test, self.feat2label_test, self.spk_test \
