@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 from  mpl_toolkits.mplot3d import Axes3D
-import MAP_eval as MAP
+# import MAP_eval as MAP
 import data_parser as reader
 import argparse 
 import PCA_eval as PCA
@@ -54,7 +54,8 @@ def main():
         word_color_dict)
     #ax = PCA.plot_with_anno( ave_test_feat_trans, anno_list, rev_dic, ax)
     #ax.legend(loc='upper right')
-    plt.show()
+    # plt.show()
+    plt.savefig(FLAG.trans_file + '.png')
 
     return 
 
