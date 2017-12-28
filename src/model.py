@@ -157,8 +157,8 @@ class Audio2Vec(object):
           loss 
         """
 
-        labels_trans = tf.reshape(tf.transpose(feat, perm=[2,1,0]), 
-                shape=(self.feat_dim, self.seq_len*self.batch_size))
+        labels_trans = tf.transpose(tf.reshape(feat, 
+                shape=(self.seq_len*self.batch_size, self.feat_dim)))
         labels_trans = tf.reshape(labels_trans, shape=[-1])
         dec_proj_outputs = tf.reshape(dec_out, shape=[-1])
         ### compute RMSE error ###
