@@ -27,11 +27,11 @@ class Audio2Vec(object):
         # examples_norm = tf.contrib.layers.layer_norm(examples)
         # _, (c, enc_state) = core_rnn.static_rnn(cell, examples, dtype=dtypes.float32)
         with tf.variable_scope("stack_rnn_encoder"):
-            enc_cell = copy.copy(cell)
+            enc_cell = copy.deepcopy(cell)
             enc_output, enc_state = core_rnn.static_rnn(enc_cell, feat, dtype=dtypes.float32)
             for i in range(2, self.stack_num):
                 with tf.variable_scope("stack_rnn_encoder_"+str(i)):
-                    enc_cell = copy.copy(cell)
+                    enc_cell = copy.deepcopy(cell)
                     enc_output, enc_state = core_rnn.static_rnn(enc_cell, enc_output, dtype=dtypes.float32)
         return enc_state
 
@@ -119,11 +119,11 @@ class Audio2Vec(object):
     def rnn_decode(self, cell, enc_memory):
         dec_inp = (tf.unstack(tf.zeros([self.seq_len, self.batch_size, self.feat_dim], dtype=tf.float32, name="GO")))
         with tf.variable_scope("stack_rnn_decoder"):
-            dec_cell = copy.copy(cell)
+            dec_cell = copy.deepcopy(cell)
             dec_output, dec_state = seq2seq.rnn_decoder(dec_inp, enc_memory, dec_cell)
             for i in range(2, self.stack_num):
                 with tf.variable_scope("stack_rnn_decoder_"+str(i)):
-                    dec_cell = copy.copy(cell)
+                    dec_cell = copy.deepcopy(cell)
                     dec_output, dec_state = core_rnn.static_rnn(dec_cell, dec_output, dtype=dtypes.float32)
             dec_reshape = tf.transpose(tf.reshape(dec_output,
                 (self.seq_len*self.batch_size, self.p_memory_dim+self.s_memory_dim)))

@@ -6,9 +6,11 @@ import random
 from datetime import datetime 
 from model import Audio2Vec
 from utils import *
+from collections import deque
 
-n_files = 100
+n_files = 50
 proportion = 0.9
+gram_num = 2
 
 class Solver(object):
     def __init__(self, model_type, stack_num, feat_dir, train_feat_scp, test_feat_scp, batch_size, seq_len, feat_dim,
@@ -44,7 +46,7 @@ class Solver(object):
         self.feat2label_test = None
         self.spk_test = None
         self.n_batches_test = None
-
+        
     def generate_opt(self, loss, learning_rate, momentum, var_list):
         ### Optimizer building              ###
         ### variable: generate_op              ###
