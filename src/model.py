@@ -96,7 +96,7 @@ class Audio2Vec(object):
 
         # generate_loss = tf.losses.mean_squared_error(bin_pos, bin_neg)
         # discriminate_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)#  + 10 * GP_loss
-        discrimination_loss = tf.reduce_mean(bin_pos - bin_neg)
+        discrimination_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)
         return discrimination_loss
 
     def adversarial_training(self, p_enc, p_enc_pos, p_enc_neg):

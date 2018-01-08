@@ -8,8 +8,8 @@ from model import Audio2Vec
 from utils import *
 from collections import deque
 
-n_files = 50
-proportion = 0.9
+n_files = 200
+proportion = 0.975
 gram_num = 2
 
 class Solver(object):
