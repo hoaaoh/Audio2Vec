@@ -74,7 +74,7 @@ class Solver(object):
     def save_batch_BN(self, word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file,
                       p_memories, s_memories, feat_indices):
         """Getting Bottleneck Features"""
-        for i in range(self.batch_size):
+        for i in range(len(feat_indices)):
             word = self.feat2label_test[feat_indices[i]][0]
             spk = self.feat2label_test[feat_indices[i]][1][:-4]
             p_single_memory = p_memories[i]
@@ -146,12 +146,13 @@ class Solver(object):
             feat_indices = feat_order[start_idx:end_idx]
             if step == n_batches:
                 feat_indices = feat_order[step * self.batch_size:]
+            batch_size = len(feat_indices)
             # print (feat_indices)
             batch_examples, batch_examples_pos, batch_examples_neg = \
                 batch_pair_data(feats, spk2feat, feat2label, feat_indices, spk_list)
-            batch_examples = batch_examples.reshape((self.batch_size, self.seq_len, self.feat_dim))
-            batch_examples_pos = batch_examples_pos.reshape((self.batch_size, self.seq_len, self.feat_dim))
-            batch_examples_neg = batch_examples_neg.reshape((self.batch_size, self.seq_len, self.feat_dim))
+            batch_examples = batch_examples.reshape((batch_size, self.seq_len, self.feat_dim))
+            batch_examples_pos = batch_examples_pos.reshape((batch_size, self.seq_len, self.feat_dim))
+            batch_examples_neg = batch_examples_neg.reshape((batch_size, self.seq_len, self.feat_dim))
 
             if mode == 'train':
                 start_time = time.time()
@@ -191,7 +192,7 @@ class Solver(object):
 
                 if step % 100 == 0:
                     duration = time.time() - start_time
-                    example_per_sec = self.batch_size / duration
+                    example_per_sec = batch_size / duration
                     format_str = ('%s:epoch %d,step %d,\nr_loss=%.5f,s_pos_loss=%.5f,'
                                   's_neg_loss=%.5f,g_loss=%.5f,d_loss=%.5f,gp_loss=%.5f')
                     print (format_str % (datetime.now(), epoch, step, \
