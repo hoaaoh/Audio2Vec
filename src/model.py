@@ -7,10 +7,10 @@ from tensorflow.python.framework import dtypes
 import copy
         
 class Audio2Vec(object):
-    def __init__(self, model_type, stack_num, batch_size, p_memory_dim, s_memory_dim, seq_len, feat_dim):
+    def __init__(self, model_type, stack_num, p_memory_dim, s_memory_dim, seq_len, feat_dim):
         self.model_type = model_type
         self.stack_num = stack_num
-        self.batch_size = batch_size
+        self.batch_size = None
         self.p_memory_dim = p_memory_dim
         self.s_memory_dim = s_memory_dim
         self.seq_len = seq_len
@@ -175,6 +175,7 @@ class Audio2Vec(object):
         return reconstruction_loss
 
     def build_model(self):
+        self.batch_size = tf.shape(self.feat)[0]
         feat = tf.unstack(tf.transpose (self.feat, perm=[1,0,2]), self.seq_len)
         feat_pos = tf.unstack(tf.transpose (self.feat_pos, perm=[1,0,2]), self.seq_len)
         feat_neg = tf.unstack(tf.transpose (self.feat_neg, perm=[1,0,2]), self.seq_len)

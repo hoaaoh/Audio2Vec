@@ -29,7 +29,7 @@ class Solver(object):
         self.log_dir = log_dir
         self.model_dir = model_dir
         self.n_epochs = n_epochs
-        self.model = Audio2Vec(model_type, stack_num, batch_size, p_memory_dim, s_memory_dim, seq_len, feat_dim)
+        self.model = Audio2Vec(model_type, stack_num, p_memory_dim, s_memory_dim, seq_len, feat_dim)
 
         self.generate_op = None
         self.discriminate_op = None
@@ -140,10 +140,12 @@ class Solver(object):
         d_total_loss_value = 0.
         gp_total_loss_value = 0.
         summary = None
-        for step in range(n_batches):
+        for step in range(n_batches+1):
             start_idx = step * self.batch_size
             end_idx = start_idx + self.batch_size
             feat_indices = feat_order[start_idx:end_idx]
+            if step == n_batches:
+                feat_indices = feat_order[step * self.batch_size:]
             # print (feat_indices)
             batch_examples, batch_examples_pos, batch_examples_neg = \
                 batch_pair_data(feats, spk2feat, feat2label, feat_indices, spk_list)
