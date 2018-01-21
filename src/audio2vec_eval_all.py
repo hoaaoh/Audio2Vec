@@ -45,16 +45,11 @@ def addParser():
     return parser
 
 def main():
-    for i, all_AE_scp in enumerate(os.listdir(FLAG.all_AE_dir)):
-        all_AE_scp = os.path.join(FLAG.all_AE_dir, all_AE_scp)
-        phonetic_file = os.path.join(FLAG.phonetic_dir, 'phonetic_all_'+str(i))
-        print (all_AE_scp)
-        print (phonetic_file)
-        solver = Solver(FLAG.model_type, FLAG.stack_num, FLAG.feat_dir, None, all_AE_scp, FLAG.batch_size,
-                        FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
-                        FLAG.log_dir, FLAG.model_dir, None)
-        print ("Solver constructed!")
-        solver.make_phonetic(phonetic_file)
+    solver = Solver(FLAG.model_type, FLAG.stack_num, FLAG.feat_dir, None, None, FLAG.batch_size,
+                    FLAG.seq_len, FLAG.feat_dim, FLAG.p_hidden_dim, FLAG.s_hidden_dim, FLAG.init_lr,
+                    FLAG.log_dir, FLAG.model_dir, None)
+    print ("Solver constructed!")
+    solver.make_phonetic(FLAG.all_AE_dir, FLAG.phonetic_dir)
 
 if __name__ == '__main__':
     parser = addParser()

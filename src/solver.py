@@ -381,8 +381,8 @@ class Solver(object):
                  speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, \
                           word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file)
     
-    def make_phonetic(self, phonetic_file):
-        """ Testing seq2seq for AudioVec."""
+    def make_phonetic(self, all_AE_dir, phonetic_dir):
+        """ Making phonetic for AudioVec."""
         reconstruction_loss, generation_loss, discrimination_loss, \
             GP_loss, speaker_loss_pos, speaker_loss_neg, p_enc, s_enc = \
             self.model.build_model()
@@ -410,16 +410,29 @@ class Solver(object):
         else:
             print ('No checkpoint file found.')
             return
-
-        ### Load data  ###
+        
+        ### ###
         feats_dir = os.path.join(self.feat_dir, 'feats', str(self.seq_len))
-        self.n_feats_test, self.feats_test, self.spk2feat_test, self.feat2label_test, self.spk_test \
-            = load_data(feats_dir, self.test_feat_scp)
-        self.n_batches_test = self.n_feats_test // self.batch_size
+        for num, all_AE_scp in enumerate(os.listdir(all_AE_dir)):
+            all_AE_scp = os.path.join(all_AE_dir, all_AE_scp)
+            phonetic_file = os.path.join(phonetic_dir, 'phonetic_all_'+str(num))
+            print (all_AE_scp)
+            print (phonetic_file)
 
-        ### Start testing ###
-        self.compute_loss('phonetic', sess, None, None, None, reconstruction_loss, generation_loss, \
-                 speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, \
-                          None, None, None, None, phonetic_file)
+            ### Load data  ###
+            self.n_feats_test, self.feats_test, self.spk2feat_test, self.feat2label_test, self.spk_test \
+                = load_data(feats_dir, all_AE_scp)
+            self.n_batches_test = self.n_feats_test // self.batch_size
+
+            ### Start testing ###
+            self.compute_loss('phonetic', sess, None, None, None, reconstruction_loss, generation_loss, \
+                     speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, \
+                              None, None, None, None, phonetic_file)
+            self.n_feats_test = None
+            self.feats_test = None
+            self.spk2feat_test = None
+            self.feat2label_test = None
+            self.spk_test = None
+            self.n_batches_test = None
 
 
