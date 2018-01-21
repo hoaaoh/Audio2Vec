@@ -86,34 +86,35 @@ class Solver(object):
                     ph_file.write(str(p) + ' ')
                     if j == len(p_single_memory)-1:
                         ph_file.write(str(int(float(word))) + '\n')
-            with open(word_word_dir+'/'+str(word), 'a') as word_file:
-                for j, p in enumerate(p_single_memory):
-                    word_file.write(str(p))
-                    if j != len(p_single_memory)-1:
-                        word_file.write(',')
-                    else:
-                        word_file.write('\n')
-            with open(word_spk_dir+'/'+str(spk), 'a') as word_file:
-                for j, p in enumerate(p_single_memory):
-                    word_file.write(str(p))
-                    if j != len(p_single_memory)-1:
-                        word_file.write(',')
-                    else:
-                        word_file.write('\n')
-            with open(spk_word_dir+'/'+str(word), 'a') as spk_file:
-                for j, s in enumerate(s_single_memory):
-                    spk_file.write(str(s))
-                    if j != len(s_single_memory)-1:
-                        spk_file.write(',')
-                    else:
-                        spk_file.write('\n')
-            with open(spk_spk_dir+'/'+str(spk), 'a') as spk_file:
-                for j, s in enumerate(s_single_memory):
-                    spk_file.write(str(s))
-                    if j != len(s_single_memory)-1:
-                        spk_file.write(',')
-                    else:
-                        spk_file.write('\n')
+            if word_word_dir != None:
+                with open(word_word_dir+'/'+str(word), 'a') as word_file:
+                    for j, p in enumerate(p_single_memory):
+                        word_file.write(str(p))
+                        if j != len(p_single_memory)-1:
+                            word_file.write(',')
+                        else:
+                            word_file.write('\n')
+                with open(word_spk_dir+'/'+str(spk), 'a') as word_file:
+                    for j, p in enumerate(p_single_memory):
+                        word_file.write(str(p))
+                        if j != len(p_single_memory)-1:
+                            word_file.write(',')
+                        else:
+                            word_file.write('\n')
+                with open(spk_word_dir+'/'+str(word), 'a') as spk_file:
+                    for j, s in enumerate(s_single_memory):
+                        spk_file.write(str(s))
+                        if j != len(s_single_memory)-1:
+                            spk_file.write(',')
+                        else:
+                            spk_file.write('\n')
+                with open(spk_spk_dir+'/'+str(spk), 'a') as spk_file:
+                    for j, s in enumerate(s_single_memory):
+                        spk_file.write(str(s))
+                        if j != len(s_single_memory)-1:
+                            spk_file.write(',')
+                        else:
+                            spk_file.write('\n')
 
     def compute_loss(self, mode, sess, summary_writer, summary_op, epoch, reconstruction_loss, generation_loss,
                      speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc, 
@@ -197,7 +198,7 @@ class Solver(object):
                                   's_neg_loss=%.5f,g_loss=%.5f,d_loss=%.5f,gp_loss=%.5f')
                     print (format_str % (datetime.now(), epoch, step, \
                                          r_loss, s_pos_loss, s_neg_loss, g_loss, d_loss, gp_loss))
-            else:
+            elif mode == 'test':
                 if summary_writer == None:
                     r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
                         sess.run([reconstruction_loss, generation_loss, \
@@ -214,6 +215,14 @@ class Solver(object):
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
+            else:
+                r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
+                    sess.run([reconstruction_loss, generation_loss, \
+                              speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc], \
+                             feed_dict={self.model.feat: batch_examples,
+                                        self.model.feat_pos: batch_examples_pos,
+                                        self.model.feat_neg: batch_examples_neg})
+                self.save_batch_BN(None, None, None, None, phonetic_file, p_memories, s_memories, feat_indices)
             r_total_loss_value += r_loss
             s_pos_total_loss_value += s_pos_loss
             s_neg_total_loss_value += s_neg_loss
@@ -307,7 +316,7 @@ class Solver(object):
 
         ### Load data  ###
         feats_dir = os.path.join(self.feat_dir, 'feats', str(self.seq_len))
-        split_data(self.feat_dir, n_files, proportion, self.seq_len)
+        # split_data(self.feat_dir, n_files, proportion, self.seq_len)
         self.n_feats_train, self.feats_train, self.spk2feat_train, self.feat2label_train, self.spk_train \
             = load_data(feats_dir, self.train_feat_scp)
         self.n_feats_test, self.feats_test, self.spk2feat_test, self.feat2label_test, self.spk_test \
@@ -371,4 +380,46 @@ class Solver(object):
         self.compute_loss('test', sess, None, None, None, reconstruction_loss, generation_loss, \
                  speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, \
                           word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file)
+    
+    def make_phonetic(self, phonetic_file):
+        """ Testing seq2seq for AudioVec."""
+        reconstruction_loss, generation_loss, discrimination_loss, \
+            GP_loss, speaker_loss_pos, speaker_loss_neg, p_enc, s_enc = \
+            self.model.build_model()
+
+        # Create a saver.
+        saver = tf.train.Saver(tf.all_variables())
+
+        # Build and initialization operation to run below
+        init = tf.global_variables_initializer()
+        
+        # Start running operations on the Graph.
+        config = tf.ConfigProto(log_device_placement=False)
+        config.gpu_options.allow_growth = True
+        sess = tf.Session(config=config)
+        sess.run(init)
+        sess.graph.finalize()
+
+        ### Restore the model ###
+        ckpt = tf.train.get_checkpoint_state(self.model_dir)
+        global_step = 0
+        if ckpt and ckpt.model_checkpoint_path:
+            saver.restore(sess, ckpt.model_checkpoint_path)
+            global_step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+            print ("Model restored.")
+        else:
+            print ('No checkpoint file found.')
+            return
+
+        ### Load data  ###
+        feats_dir = os.path.join(self.feat_dir, 'feats', str(self.seq_len))
+        self.n_feats_test, self.feats_test, self.spk2feat_test, self.feat2label_test, self.spk_test \
+            = load_data(feats_dir, self.test_feat_scp)
+        self.n_batches_test = self.n_feats_test // self.batch_size
+
+        ### Start testing ###
+        self.compute_loss('phonetic', sess, None, None, None, reconstruction_loss, generation_loss, \
+                 speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, \
+                          None, None, None, None, phonetic_file)
+
 

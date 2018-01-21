@@ -2,7 +2,8 @@
 
 [ -f path.sh ] && . ./path.sh
 path=/home/grtzsohalf/Audio2Vec
-feat_dir=/home_local/grtzsohalf/yeeee
+#feat_dir=/home_local/grtzsohalf/yeeee/French
+feat_dir=/nfs/Mazu/grtzsohalf/yeeee/German
 
 gram_num=2
 
