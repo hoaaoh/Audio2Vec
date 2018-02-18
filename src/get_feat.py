@@ -88,6 +88,7 @@ def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat
                                             range(new_frames.shape[1])]).T
                     np_new_frames = np.reshape(np.array(new_frames),-1)
                     np_new_frames = np.append(np_new_frames,[word_id])
+                    np_new_frames = np.append(np_new_frames,[ID])
                     #print (np_new_frames[0])
                     
                     # with open(path+'/'+str(cls)+'/'+str(int(counter_dic[cls]/FLAG.num_in_ark)) + '.ark','a') as csvfile:
