@@ -14,7 +14,7 @@ seq_len=70
 feat_dim=39
 stack_num=3
 path=/home/grtzsohalf/Audio2Vec
-feat_dir=/nfs/Mazu/grtzsohalf/yeeee/English
+feat_dir=/nfs/YueLao/grtzsohalf/yeeee/English
 init_lr=$1
 p_dim=$2
 s_dim=$3
@@ -26,7 +26,7 @@ if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_t
   exit 1
 fi
 
-exp_dir=/home_local/grtzsohalf/yeeee/exp
+exp_dir=/home_local/grtzsohalf/yeeee/interpolate_exp
 mkdir -p $exp_dir
 model_dir=$exp_dir/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 log_dir=$exp_dir/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
