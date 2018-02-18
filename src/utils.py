@@ -35,9 +35,9 @@ def load_data(feats_dir, scp_file):
             spk_indices = []
             with open(os.path.join(feats_dir, line), 'r') as fin2:
                 for feat in fin2:
-                    feat = feat.split(',')
-                    feats.append(list(map(float, feat[:-1])))
-                    feat2label[count] = (feat[-1][:-1], line)
+                    feat = feat[:-1].split(',')
+                    feats.append(list(map(float, feat[:-2])))
+                    feat2label[count] = (feat[-2], feat[-1], line)
                     spk_indices.append(count)
                     count += 1
                 spk2feat[line] = spk_indices
@@ -52,7 +52,8 @@ def batch_pair_data(feats, spk2feat, feat2label, feat_indices, spk_list):
         # feat
         feat = feats[idx]
         word = feat2label[idx][0]
-        spk = feat2label[idx][1]
+        utter = feat2label[idx][1]
+        spk = feat2label[idx][2]
 
         # feat_pos
         idx_pos = random.choice(spk2feat[spk])
