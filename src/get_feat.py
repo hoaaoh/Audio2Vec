@@ -77,11 +77,17 @@ def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat
                         range(int(start),int(start)+int(cont))]
                     ### padding zero ###
                     #print (cont, cls)
-                    if int(cont) < cls : 
-                        new_frames +=  [[0. for j in range(feat_dim)]for i in range(cls -
-                            int(cont))]
-                        np_new_frames = np.reshape(np.array(new_frames),-1)
-                        np_new_frames = np.append(np_new_frames,[word_id])
+
+                    # if int(cont) < cls : 
+                        # new_frames +=  [[0. for j in range(feat_dim)]for i in range(cls -
+                            # int(cont))]
+                    new_frames = np.array(new_frames, dtype=np.float32)
+                    x = np.arange(cls)
+                    xp = np.linspace(0, cls - 1, new_frames.shape[0])
+                    new_frames = np.vstack([np.interp(x, xp, new_frames[:, i]) for i in \
+                                            range(new_frames.shape[1])]).T
+                    np_new_frames = np.reshape(np.array(new_frames),-1)
+                    np_new_frames = np.append(np_new_frames,[word_id])
                     #print (np_new_frames[0])
                     
                     # with open(path+'/'+str(cls)+'/'+str(int(counter_dic[cls]/FLAG.num_in_ark)) + '.ark','a') as csvfile:
