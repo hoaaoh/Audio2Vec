@@ -76,7 +76,8 @@ class Solver(object):
         """Getting Bottleneck Features"""
         for i in range(len(feat_indices)):
             word = self.feat2label_test[feat_indices[i]][0]
-            spk = self.feat2label_test[feat_indices[i]][1][:-4]
+            utter = self.feat2label_test[feat_indices[i]][1]
+            spk = self.feat2label_test[feat_indices[i]][2][:-4]
             p_single_memory = p_memories[i]
             s_single_memory = s_memories[i]
             p_single_memory = p_single_memory.tolist()
@@ -85,7 +86,7 @@ class Solver(object):
                 for j, p in enumerate(p_single_memory):
                     ph_file.write(str(p) + ' ')
                     if j == len(p_single_memory)-1:
-                        ph_file.write(str(int(float(word))) + '\n')
+                        ph_file.write(str(int(float(word))) + ' '+ utter + '\n')
             if word_word_dir != None:
                 with open(word_word_dir+'/'+str(word), 'a') as word_file:
                     for j, p in enumerate(p_single_memory):

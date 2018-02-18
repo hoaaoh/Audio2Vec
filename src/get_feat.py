@@ -35,7 +35,7 @@ def classify(frame_num, frame_num_list):
     return None
 
 ### write the features to path/classify_num.ark ###
-def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat_dim, filtered_prons, gram_num):
+def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat_dim, filtered_prons):
     import csv 
     import numpy as np
     counter_dic = {}
@@ -80,8 +80,9 @@ def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat
                     if int(cont) < cls : 
                         new_frames +=  [[0. for j in range(feat_dim)]for i in range(cls -
                             int(cont))]
-                        np_new_frames = np.reshape(np.array(new_frames),-1)
-                        np_new_frames = np.append(np_new_frames,[word_id])
+                    np_new_frames = np.reshape(np.array(new_frames),-1)
+                    np_new_frames = np.append(np_new_frames,[word_id])
+                    np_new_frames = np.append(np_new_frames,[ID])
                     #print (np_new_frames[0])
                     
                     # with open(path+'/'+str(cls)+'/'+str(int(counter_dic[cls]/FLAG.num_in_ark)) + '.ark','a') as csvfile:
@@ -94,19 +95,6 @@ def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat
                             else:
                                 csvfile.write(str(np_new_frames[i])+'\n')
 
-    lines_num = len(filtered_lines)
-    VQ_prons = ['X'] * lines_num
-    que = deque()
-    count = 0
-    for idx in filtered_lines:
-        if len(que) > 0 and que[-1] != idx-1:
-            que.clear()
-        que.append(idx)
-        if len(que) == (2*gram_num+1):
-            VQ_prons[count-gram_num] = 'O'
-            que.popleft()
-        count += 1
-    
     with open(prons, 'r') as fin:
         with open(filtered_prons, 'w') as fout:
             count = 0
@@ -117,7 +105,7 @@ def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat
                         break
                     line = line[:-1]
                     if count == idx:
-                        fout.write(line + ' ' + VQ_prons[i] + ' ' + str(idx) + '\n')
+                        fout.write(line + ' ' + str(idx) + '\n')
                         count += 1
                         break
                     count += 1
@@ -128,8 +116,7 @@ def main():
     path=FLAG.store_path
     mkdir(classify_list, path)
     classify_dic = read_classify_list(FLAG.prons)
-    read_and_save_feat(FLAG.prons, FLAG.feat_ark, classify_dic, \
-        classify_list, path, FLAG.feat_dim, FLAG.filtered_prons, FLAG.gram_num)
+    read_and_save_feat(FLAG.prons, FLAG.feat_ark, classify_dic, classify_list, path, FLAG.feat_dim, FLAG.filtered_prons)
     return 
 
 if __name__ == "__main__":
@@ -146,9 +133,6 @@ if __name__ == "__main__":
     parser.add_argument('--feat_dim', type=int,
         default=39,
         help='the feat dimension, default=39')
-    parser.add_argument('--gram_num',type=int,
-        default=2,
-        help='the number n for n-gram')
     
     FLAG = parser.parse_args()
 
