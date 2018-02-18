@@ -26,7 +26,7 @@ if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_t
   exit 1
 fi
 
-exp_dir=/nfs/Mazu/nanhao/yeeee/exp
+exp_dir=/nfs/Mazu/nanhao/yeeee/exp2
 mkdir -p $exp_dir
 model_dir=$exp_dir/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 log_dir=$exp_dir/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type

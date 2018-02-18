@@ -10,11 +10,11 @@ if [ $# != 5 ] ; then
 fi
 
 batch_size=64
-seq_len=50
-feat_dim=257
+seq_len=70
+feat_dim=39
 stack_num=3
 path=/home/nanhao/Audio2vec
-feat_dir=/nfs/Mazu/nanhao/yeeee
+feat_dir=/nfs/Mazu/grtzsohalf/yeeee/English
 init_lr=$1
 p_dim=$2
 s_dim=$3
@@ -26,7 +26,7 @@ if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_t
   exit 1
 fi
 
-exp_dir=/nfs/Mazu/nanhao/yeeee/exp
+exp_dir=/nfs/Mazu/nanhao/yeeee/exp_mfcc
 mkdir -p $exp_dir
 model_dir=$exp_dir/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 log_dir=$exp_dir/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
@@ -42,29 +42,29 @@ mkdir -p $log_dir
 mkdir -p $tf_model_dir
 mkdir -p $tf_log_dir
 
-mkdir -p $feat_dir/words_words_AE_test
-mkdir -p $feat_dir/words_spks_AE_test
-mkdir -p $feat_dir/spks_words_AE_test
-mkdir -p $feat_dir/spks_spks_AE_test
+mkdir -p $exp_dir/words_words_AE_test
+mkdir -p $exp_dir/words_spks_AE_test
+mkdir -p $exp_dir/spks_words_AE_test
+mkdir -p $exp_dir/spks_spks_AE_test
 
-mkdir -p $feat_dir/words_words_AE_train
-mkdir -p $feat_dir/words_spks_AE_train
-mkdir -p $feat_dir/spks_words_AE_train
-mkdir -p $feat_dir/spks_spks_AE_train
+mkdir -p $exp_dir/words_words_AE_train
+mkdir -p $exp_dir/words_spks_AE_train
+mkdir -p $exp_dir/spks_words_AE_train
+mkdir -p $exp_dir/spks_spks_AE_train
 
 ### testing ###
 export CUDA_VISIBLE_DEVICES=$device_id
-rm $feat_dir/phonetic_test
-rm $feat_dir/phonetic_train
+rm $exp_dir/phonetic_test
+rm $exp_dir/phonetic_train
 python3 $path/src/audio2vec_eval.py --init_lr=$init_lr --batch_size=$batch_size --seq_len=$seq_len --feat_dim=$feat_dim \
-  --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --stack_num=$stack_num $tf_log_dir $tf_model_dir $feat_dir/test_AE.scp \
-$feat_dir $model_type $feat_dir/words_words_AE_test $feat_dir/words_spks_AE_test \
-$feat_dir/spks_words_AE_test $feat_dir/spks_spks_AE_test $feat_dir/phonetic_test
+  --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --stack_num=$stack_num $tf_log_dir $tf_model_dir $exp_dir/test_AE.scp \
+$feat_dir $model_type $exp_dir/words_words_AE_test $exp_dir/words_spks_AE_test \
+$exp_dir/spks_words_AE_test $exp_dir/spks_spks_AE_test $exp_dir/phonetic_test
 
 python3 $path/src/audio2vec_eval.py --init_lr=$init_lr --batch_size=$batch_size --seq_len=$seq_len --feat_dim=$feat_dim \
-  --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --stack_num=$stack_num $tf_log_dir $tf_model_dir $feat_dir/train_AE.scp \
-$feat_dir $model_type $feat_dir/words_words_AE_train $feat_dir/words_spks_AE_train \
-$feat_dir/spks_words_AE_train $feat_dir/spks_spks_AE_train $feat_dir/phonetic_train 
+  --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --stack_num=$stack_num $tf_log_dir $tf_model_dir $exp_dir/train_AE.scp \
+$feat_dir $model_type $exp_dir/words_words_AE_test $exp_dir/words_spks_AE_test \
+$exp_dir/spks_words_AE_test $exp_dir/spks_spks_AE_test $exp_dir/phonetic_test
 
 #python3 $path/src/trans_dir_to_file.py $feat_dir/words_words_AE_train $feat_dir/train_AE_words_words
 #python3 $path/src/trans_dir_to_file.py $feat_dir/words_spks_AE_train $feat_dir/train_AE_words_spks

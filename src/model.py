@@ -16,12 +16,33 @@ class Audio2Vec(object):
         self.seq_len = seq_len
         self.feat_dim = feat_dim
 
-        self.feat = tf.placeholder(tf.float32, [None, seq_len, feat_dim])
-        self.feat_pos = tf.placeholder(tf.float32, [None, seq_len, feat_dim])
-        self.feat_neg = tf.placeholder(tf.float32, [None, seq_len, feat_dim])
+        self.feat = tf.placeholder(tf.float32, [batch_size, seq_len, feat_dim])
+        self.feat_pos = tf.placeholder(tf.float32, [batch_size, seq_len, feat_dim])
+        self.feat_neg = tf.placeholder(tf.float32, [batch_size, seq_len, feat_dim])
 
     def leaky_relu(self, x, alpha=0.01):
         return tf.maximum(x, alpha*x)
+
+    def batch_norm(self, x, name='batch_norm'):
+        return tf.contrib.layers.batch_norm(x, decay=0.9, updates_collections=None, epsilon=1e-5, scale=True)
+
+    def instance_norm(self, input, name="instance_norm"):
+        with tf.variable_scope(name):
+            scale = tf.get_variable("scale", [1], initializer=tf.random_normal_initializer(1.0, 0.02, dtype=tf.float32))
+            offset = tf.get_variable("offset", [1], initializer=tf.constant_initializer(0.0))
+            mean, variance = tf.nn.moments(input, axes=[1], keep_dims=True)
+            epsilon = 1e-5
+            inv = tf.rsqrt(variance + epsilon)
+            normalized = (input-mean)*inv
+            return scale*normalized + offset
+
+    def vae(self, enc, W_enc, b_enc, W_enc_va, b_enc_va):
+        enc_mu = tf.matmul(enc, W_enc) + b_enc
+        enc_va = tf.matmul(enc, W_enc_va) + b_enc_va
+        enc_sg = tf.exp(0.5 * enc_va)
+        enc = tf.multiply(enc_sg, tf.random_normal(shape=tf.shape(enc_mu), stddev=1e-3)) + enc_mu
+        KL = - 0.5 * tf.reduce_mean(tf.reduce_sum(1 + enc_va - tf.square(enc_mu) - tf.square(enc_sg), axis=[-1]))
+        return enc, KL
 
     def rnn_encode(self, cell, feat):
         # examples_norm = tf.contrib.layers.layer_norm(examples)
@@ -41,33 +62,45 @@ class Audio2Vec(object):
             b_enc_p = tf.get_variable("enc_b_p", shape=[self.p_memory_dim])
             W_enc_s = tf.get_variable("enc_w_s", [self.s_memory_dim, self.s_memory_dim])
             b_enc_s = tf.get_variable("enc_b_s", shape=[self.s_memory_dim])
+            W_enc_p_va = tf.get_variable("enc_w_p_va", [self.p_memory_dim, self.p_memory_dim])
+            b_enc_p_va = tf.get_variable("enc_b_p_va", shape=[self.p_memory_dim])
+            W_enc_s_va = tf.get_variable("enc_w_s_va", [self.s_memory_dim, self.s_memory_dim])
+            b_enc_s_va = tf.get_variable("enc_b_s_va", shape=[self.s_memory_dim])
 
             with tf.variable_scope('encode_p') as scope_1_1:
-                cell = core_rnn_cell.GRUCell(self.p_memory_dim, activation=tf.nn.relu)
+                cell = core_rnn_cell.GRUCell(self.p_memory_dim)
                 # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
                 p_enc = self.rnn_encode(cell, feat)
-                p_enc = self.leaky_relu(tf.matmul(p_enc, W_enc_p) + b_enc_p)
+                p_enc, p_enc_KL = self.vae(p_enc, W_enc_p, b_enc_p, W_enc_p_va, b_enc_p_va)
+                # p_enc = self.leaky_relu(tf.matmul(p_enc, W_enc_p) + b_enc_p)
                 scope_1_1.reuse_variables()
                 p_enc_pos = self.rnn_encode(cell, feat_pos)
-                p_enc_pos = self.leaky_relu(tf.matmul(p_enc_pos, W_enc_p) + b_enc_p)
+                p_enc_pos, p_enc_pos_KL = self.vae(p_enc_pos, W_enc_p, b_enc_p, W_enc_p_va, b_enc_p_va)
+                # p_enc_pos = self.leaky_relu(tf.matmul(p_enc_pos, W_enc_p) + b_enc_p)
                 p_enc_neg = self.rnn_encode(cell, feat_neg)
-                p_enc_neg = self.leaky_relu(tf.matmul(p_enc_neg, W_enc_p) + b_enc_p)
+                p_enc_neg, p_enc_neg_KL = self.vae(p_enc_neg, W_enc_p, b_enc_p, W_enc_p_va, b_enc_p_va)
+                # p_enc_neg = self.leaky_relu(tf.matmul(p_enc_neg, W_enc_p) + b_enc_p)
             with tf.variable_scope('encode_s') as scope_1_2:
                 cell = core_rnn_cell.GRUCell(self.s_memory_dim, activation=tf.nn.relu)
                 # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
                 s_enc = self.rnn_encode(cell, feat)
+                # s_enc, s_enc_KL = self.vae(s_enc, W_enc_s, b_enc_s, W_enc_s_va, b_enc_s_va)
                 s_enc = self.leaky_relu(tf.matmul(s_enc, W_enc_s) + b_enc_s)
                 scope_1_2.reuse_variables()
                 s_enc_pos = self.rnn_encode(cell, feat_pos)
+                # s_enc_pos, s_enc_pos_KL = self.vae(s_enc_pos, W_enc_s, b_enc_s, W_enc_s_va, b_enc_s_va)
                 s_enc_pos = self.leaky_relu(tf.matmul(s_enc_pos, W_enc_s) + b_enc_s)
                 s_enc_neg = self.rnn_encode(cell, feat_neg)
+                # s_enc_neg, s_enc_neg_KL = self.vae(s_enc_neg, W_enc_s, b_enc_s, W_enc_s_va, b_enc_s_va)
                 s_enc_neg = self.leaky_relu(tf.matmul(s_enc_neg, W_enc_s) + b_enc_s)
-        return p_enc, p_enc_pos, p_enc_neg, s_enc, s_enc_pos, s_enc_neg
+            KL_loss = p_enc_KL + p_enc_pos_KL + p_enc_neg_KL # s_enc_KL + s_enc_pos_KL + s_enc_neg_KL
+            # KL_loss = None
+        return p_enc, p_enc_pos, p_enc_neg, s_enc, s_enc_pos, s_enc_neg, KL_loss
 
     def gradient_penalty(self, W_adv_1, b_adv_1, W_adv_2, b_adv_2,
                          W_bin, b_bin, p_enc, p_enc_pos, p_enc_neg):
         with tf.variable_scope('gradient_penalty') as scope_2_1:
-            alpha = tf.random_uniform(shape=[self.batch_size, 2*self.p_memory_dim], minval=0., maxval=1.)
+            alpha = tf.random_uniform(shape=[self.batch_size, 1], minval=0., maxval=1.)
             pair_pos_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_pos], 1))
             pair_neg_stop = tf.stop_gradient(tf.concat([p_enc, p_enc_neg], 1))
             pair_hat = alpha * pair_pos_stop + (1 - alpha) * pair_neg_stop
@@ -95,8 +128,8 @@ class Audio2Vec(object):
             bin_neg = self.leaky_relu(tf.matmul(pair_neg_l2, W_bin) + b_bin)
 
         # generate_loss = tf.losses.mean_squared_error(bin_pos, bin_neg)
-        # discriminate_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)#  + 10 * GP_loss
-        discrimination_loss = tf.reduce_mean(bin_pos - bin_neg)
+        discrimination_loss = - tf.losses.mean_squared_error(bin_pos, bin_neg)#  + 10 * GP_loss
+        # discrimination_loss = tf.reduce_mean(bin_pos - bin_neg)
         return discrimination_loss
 
     def adversarial_training(self, p_enc, p_enc_pos, p_enc_neg):
@@ -142,8 +175,8 @@ class Audio2Vec(object):
                                               self.p_memory_dim+self.s_memory_dim])
             b_dec = tf.get_variable("dec_b", shape=[self.p_memory_dim+self.s_memory_dim])
 
-            dec_state = self.leaky_relu(tf.matmul(tf.concat([p_enc,s_enc], 1), W_dec) + b_dec)
-            cell = core_rnn_cell.GRUCell(self.p_memory_dim+self.s_memory_dim, activation=tf.nn.relu)
+            dec_state = self.leaky_relu(tf.matmul(self.batch_norm(tf.concat([p_enc,s_enc], 1)), W_dec) + b_dec)
+            cell = core_rnn_cell.GRUCell(self.p_memory_dim+self.s_memory_dim)
             # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
             dec_out = self.rnn_decode(cell, dec_state)
         return dec_out
@@ -175,19 +208,23 @@ class Audio2Vec(object):
         return reconstruction_loss
 
     def build_model(self):
-        feat = tf.unstack(tf.transpose (self.feat, perm=[1,0,2]), self.seq_len)
-        feat_pos = tf.unstack(tf.transpose (self.feat_pos, perm=[1,0,2]), self.seq_len)
-        feat_neg = tf.unstack(tf.transpose (self.feat_neg, perm=[1,0,2]), self.seq_len)
+        feat     = tf.unstack(tf.transpose(self.feat, perm=[1,0,2]), self.seq_len)
+        feat_pos = tf.unstack(tf.transpose(self.feat_pos, perm=[1,0,2]), self.seq_len)
+        feat_neg = tf.unstack(tf.transpose(self.feat_neg, perm=[1,0,2]), self.seq_len)
+        bn_feat     = [self.batch_norm(x) for x in feat]
+        bn_feat_pos = [self.batch_norm(x) for x in feat_pos]
+        bn_feat_neg = [self.batch_norm(x) for x in feat_neg]
 
         # Encode
-        p_enc, p_enc_pos, p_enc_neg, s_enc, s_enc_pos, s_enc_neg = \
-            self.encode(feat, feat_pos, feat_neg)
+        p_enc, p_enc_pos, p_enc_neg, s_enc, s_enc_pos, s_enc_neg, KL_loss = \
+            self.encode(bn_feat, bn_feat_pos, bn_feat_neg)
 
         if self.model_type == 'default':
             # Hinge loss
             speaker_loss_pos = tf.losses.mean_squared_error(s_enc, s_enc_pos)
             speaker_loss_neg = tf.reduce_mean(tf.maximum(tf.constant(0.01)
                                 - tf.norm(s_enc - s_enc_neg, axis=1), tf.constant(0.)))
+            kl_loss = KL_loss
 
             # Adversarial training
             GP_loss, discrimination_loss = self.adversarial_training(p_enc, p_enc_pos, p_enc_neg)
@@ -200,7 +237,7 @@ class Audio2Vec(object):
             speaker_loss_pos = tf.losses.mean_squared_error(s_enc, s_enc_pos)
             speaker_loss_neg = tf.reduce_mean(tf.maximum(tf.constant(0.01)
                                 - tf.norm(s_enc - s_enc_neg, axis=1), tf.constant(0.)))
-
+            kl_loss = tf.constant(0.0)
             GP_loss = tf.constant(0.0)
             discrimination_loss = tf.constant(0.0)
             generation_loss = tf.constant(0.0)
@@ -210,6 +247,7 @@ class Audio2Vec(object):
         else:
             speaker_loss_pos = tf.constant(0.0)
             speaker_loss_neg = tf.constant(0.0)
+            kl_loss = tf.constant(0.0)
             GP_loss = tf.constant(0.0)
             discrimination_loss = tf.constant(0.0)
             generation_loss = tf.constant(0.0)
@@ -220,4 +258,4 @@ class Audio2Vec(object):
         reconstruction_loss = self.rec_loss(dec_out, feat)
 
         return reconstruction_loss, generation_loss, discrimination_loss, \
-            GP_loss, speaker_loss_pos, speaker_loss_neg, p_enc, s_enc
+            GP_loss, speaker_loss_pos, speaker_loss_neg, kl_loss, p_enc, s_enc

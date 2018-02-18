@@ -1,14 +1,14 @@
 import tensorflow as tf
 import numpy as np
 import time
-import os
+import os, sys
 import random
 from datetime import datetime 
 from model import Audio2Vec
 from utils import *
 
-n_files = 100
-proportion = 0.9
+n_files = 200
+proportion = 0.975
 
 class Solver(object):
     def __init__(self, model_type, stack_num, feat_dir, train_feat_scp, test_feat_scp, batch_size, seq_len, feat_dim,
@@ -114,7 +114,7 @@ class Solver(object):
                         spk_file.write('\n')
 
     def compute_loss(self, mode, sess, summary_writer, summary_op, epoch, reconstruction_loss, generation_loss,
-                     speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc, 
+                     speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, kl_loss, p_enc, s_enc, 
                      word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file):
         if mode == 'train':
             feat_order = list(range(self.n_feats_train))
@@ -137,6 +137,7 @@ class Solver(object):
         g_total_loss_value = 0.
         d_total_loss_value = 0.
         gp_total_loss_value = 0.
+        kl_total_loss_value = 0.
         summary = None
         for step in range(n_batches):
             start_idx = step * self.batch_size
@@ -152,9 +153,9 @@ class Solver(object):
             if mode == 'train':
                 start_time = time.time()
                 if self.model_type == 'default':
-                    _, summary, r_loss, g_loss, s_pos_loss, s_neg_loss = \
+                    _, summary, r_loss, g_loss, s_pos_loss, s_neg_loss, kl_vae_loss = \
                         sess.run([self.generate_op, summary_op, reconstruction_loss, generation_loss, \
-                                  speaker_loss_pos, speaker_loss_neg], \
+                                  speaker_loss_pos, speaker_loss_neg, kl_loss], \
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
@@ -173,6 +174,7 @@ class Solver(object):
                     g_loss = 0.0
                     d_loss = 0.0
                     gp_loss = 0.0
+                    kl_vae_loss = 0.0
                 else:
                     _, summary, r_loss, = \
                         sess.run([self.generate_op, summary_op, reconstruction_loss], \
@@ -184,28 +186,29 @@ class Solver(object):
                     s_neg_loss = 0.0
                     d_loss = 0.0
                     gp_loss = 0.0
+                    kl_vae_loss = 0.0
 
                 if step % 100 == 0:
                     duration = time.time() - start_time
                     example_per_sec = self.batch_size / duration
                     format_str = ('%s:epoch %d,step %d,\nr_loss=%.5f,s_pos_loss=%.5f,'
-                                  's_neg_loss=%.5f,g_loss=%.5f,d_loss=%.5f,gp_loss=%.5f')
+                                  's_neg_loss=%.5f,g_loss=%.5f,d_loss=%.5f,gp_loss=%.5f,kl_loss=%.5f')
                     print (format_str % (datetime.now(), epoch, step, \
-                                         r_loss, s_pos_loss, s_neg_loss, g_loss, d_loss, gp_loss))
+                                         r_loss, s_pos_loss, s_neg_loss, g_loss, d_loss, gp_loss, kl_vae_loss))
             else:
                 if summary_writer == None:
-                    r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
+                    r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, kl_vae_loss, p_memories, s_memories = \
                         sess.run([reconstruction_loss, generation_loss, \
-                                  speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc], \
+                                  speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, kl_loss, p_enc, s_enc], \
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
                     self.save_batch_BN(word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file,
                                        p_memories, s_memories, feat_indices)
                 else:
-                    summary, r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, p_memories, s_memories = \
+                    summary, r_loss, g_loss, s_pos_loss, s_neg_loss, d_loss, gp_loss, kl_vae_loss, p_memories, s_memories = \
                         sess.run([summary_op, reconstruction_loss, generation_loss, \
-                                  speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, p_enc, s_enc], \
+                                  speaker_loss_pos, speaker_loss_neg, discrimination_loss, GP_loss, kl_loss, p_enc, s_enc], \
                                  feed_dict={self.model.feat: batch_examples,
                                             self.model.feat_pos: batch_examples_pos,
                                             self.model.feat_neg: batch_examples_neg})
@@ -215,12 +218,14 @@ class Solver(object):
             g_total_loss_value += g_loss
             d_total_loss_value += d_loss
             gp_total_loss_value += gp_loss
+            kl_total_loss_value += kl_vae_loss
         r_avg_loss = r_total_loss_value/n_batches
         s_pos_avg_loss = s_pos_total_loss_value/n_batches
         s_neg_avg_loss = s_neg_total_loss_value/n_batches
         g_avg_loss = g_total_loss_value/n_batches
         d_avg_loss = d_total_loss_value/n_batches
         gp_avg_loss = gp_total_loss_value/n_batches
+        kl_avg_loss = kl_total_loss_value/n_batches
         if summary_writer != None:
             summary_writer.add_summary(summary, epoch)
             summary_writer.flush()
@@ -231,12 +236,13 @@ class Solver(object):
             print ('%s: average g_loss for eval = %.5f' % (datetime.now(), g_avg_loss))
             print ('%s: average d_loss for eval = %.5f' % (datetime.now(), d_avg_loss))
             print ('%s: average gp_loss for eval = %.5f' % (datetime.now(), gp_avg_loss))
+            print ('%s: average kl_loss for eval = %.5f' % (datetime.now(), kl_avg_loss))
         # return r_avg_loss, s_pos_avg_loss, s_neg_avg_loss, g_avg_loss, d_avg_loss, gp_avg_loss
 
     def train(self):
         """ Training seq2seq for AudioVec."""
         reconstruction_loss, generation_loss, discrimination_loss, \
-            GP_loss, speaker_loss_pos, speaker_loss_neg, p_enc, s_enc = \
+            GP_loss, speaker_loss_pos, speaker_loss_neg, kl_loss, p_enc, s_enc = \
             self.model.build_model()
 
         # Build a graph that grains the model with one batch of examples and
@@ -253,7 +259,7 @@ class Solver(object):
         
         if self.model_type == 'default':
             self.generate_op = self.generate_opt(reconstruction_loss + generation_loss + speaker_loss_pos
-                                       + speaker_loss_neg, self.init_lr, 0.9, g_vars)
+                                       + speaker_loss_neg + kl_loss, self.init_lr, 0.9, g_vars)
             self.discriminate_op = self.discriminate_opt(discrimination_loss + 10*GP_loss,
                                        self.init_lr, 0.9, d_vars)
         else:
@@ -277,13 +283,15 @@ class Solver(object):
                         tf.summary.scalar("speaker loss neg", speaker_loss_neg),
                         tf.summary.scalar("generation loss", generation_loss),
                         tf.summary.scalar("discrimination loss", discrimination_loss),
-                        tf.summary.scalar("GP loss", GP_loss)]
+                        tf.summary.scalar("GP loss", GP_loss),
+                        tf.summary.scalar("KL loss", kl_loss)]
         summary_test = [tf.summary.scalar("reconstrucion loss eval", reconstruction_loss),
                         tf.summary.scalar("speaker loss pos eval", speaker_loss_pos),
                         tf.summary.scalar("speaker loss neg eval", speaker_loss_neg),
                         tf.summary.scalar("generation loss eval", generation_loss),
                         tf.summary.scalar("discrimination loss eval", discrimination_loss),
-                        tf.summary.scalar("GP loss eval", GP_loss)]
+                        tf.summary.scalar("GP loss eval", GP_loss),
+                        tf.summary.scalar("KL loss eval", kl_loss)]
         summary_op_train = tf.summary.merge(summary_train)
         summary_op_test = tf.summary.merge(summary_test)
         summary_writer = tf.summary.FileWriter(self.log_dir, sess.graph)
@@ -302,11 +310,13 @@ class Solver(object):
 
         ### Load data  ###
         feats_dir = os.path.join(self.feat_dir, 'feats', str(self.seq_len))
-        # split_data(self.feat_dir, n_files, proportion, self.seq_len)
+        split_data(self.feat_dir, self.model_dir.rsplit('/', 2)[0], n_files, proportion, self.seq_len)
         self.n_feats_train, self.feats_train, self.spk2feat_train, self.feat2label_train, self.spk_train \
-            = load_data(feats_dir, self.train_feat_scp)
+            = load_mfcc(feats_dir, self.train_feat_scp)
+            # = load_data(feats_dir, self.train_feat_scp)
         self.n_feats_test, self.feats_test, self.spk2feat_test, self.feat2label_test, self.spk_test \
-            = load_data(feats_dir, self.test_feat_scp)
+            = load_mfcc(feats_dir, self.test_feat_scp)
+            # = load_data(feats_dir, self.test_feat_scp)
         self.n_batches_train = self.n_feats_train // self.batch_size
         self.n_batches_test = self.n_feats_test // self.batch_size
 
@@ -316,12 +326,13 @@ class Solver(object):
             print ("Start of Epoch: " + str(epoch) + "!")
             self.compute_loss('train', sess, summary_writer, summary_op_train, epoch, reconstruction_loss, 
                               generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
-                              GP_loss, p_enc, s_enc, None, None, None, None, None)
+                              GP_loss, kl_loss, p_enc, s_enc, None, None, None, None, None)
             self.compute_loss('test', sess, summary_writer, summary_op_test, epoch, reconstruction_loss, 
                               generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
-                              GP_loss, p_enc, s_enc, None, None, None, None, None)
+                              GP_loss, kl_loss, p_enc, s_enc, None, None, None, None, None)
 
             ckpt = self.model_dir + '/model.ckpt'
+            print(ckpt)
             saver.save(sess, ckpt, global_step=epoch+global_step)
             print ("End of Epoch: " + str(epoch) + "!")
         summary_writer.flush()
@@ -329,7 +340,7 @@ class Solver(object):
     def test(self, word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file):
         """ Testing seq2seq for AudioVec."""
         reconstruction_loss, generation_loss, discrimination_loss, \
-            GP_loss, speaker_loss_pos, speaker_loss_neg, p_enc, s_enc = \
+            GP_loss, speaker_loss_pos, speaker_loss_neg, kl_loss, p_enc, s_enc = \
             self.model.build_model()
 
         # Create a saver.
@@ -359,11 +370,14 @@ class Solver(object):
         ### Load data  ###
         feats_dir = os.path.join(self.feat_dir, 'feats', str(self.seq_len))
         self.n_feats_test, self.feats_test, self.spk2feat_test, self.feat2label_test, self.spk_test \
-            = load_data(feats_dir, self.test_feat_scp)
+            = load_mfcc(feats_dir, self.test_feat_scp)
+            # = load_data(feats_dir, self.test_feat_scp)
+            # = write_data_file(feats_dir, self.test_feat_scp, self.test_feat_scp + ".meta")
+        # sys.exit()
         self.n_batches_test = self.n_feats_test // self.batch_size
 
         ### Start testing ###
         self.compute_loss('test', sess, None, None, None, reconstruction_loss, generation_loss, \
-                 speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, p_enc, s_enc, \
+                 speaker_loss_pos, speaker_loss_neg ,discrimination_loss, GP_loss, kl_loss, p_enc, s_enc, \
                           word_word_dir, word_spk_dir, spk_word_dir, spk_spk_dir, phonetic_file)
 
