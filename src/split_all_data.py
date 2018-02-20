@@ -1,6 +1,6 @@
 import os
 
-feat_dir = '/home_local/grtzsohalf/yeeee/English'
+feat_dir = '/nfs/YueLao/grtzsohalf/yeeee/English'
 seq_len = 70
 feats_dir = os.path.join(feat_dir, 'feats', str(seq_len))
 n_spks = len(os.listdir(feats_dir))

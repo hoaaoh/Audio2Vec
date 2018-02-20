@@ -1,9 +1,9 @@
 from utils import *
 
-feat_dir = '/home_local/grtzsohalf/yeeee/German'
+feat_dir = '/nfs/YueLao/grtzsohalf/yeeee/English'
 seq_len = 70
-n_files = 8166
-proportion = 0.
+n_files = 200
+proportion = 0.975
 
 def main():
     split_data(feat_dir, n_files, proportion, seq_len)
