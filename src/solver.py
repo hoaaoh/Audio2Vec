@@ -327,7 +327,8 @@ class Solver(object):
 
         ### Start training ###
         print ("Start batch training.")
-        for epoch in range(self.n_epochs):
+        for e in range(self.n_epochs):
+            epoch = e + global_step + 1
             print ("Start of Epoch: " + str(epoch) + "!")
             self.compute_loss('train', sess, summary_writer, summary_op_train, epoch, reconstruction_loss, 
                               generation_loss, speaker_loss_pos, speaker_loss_neg ,discrimination_loss, 
@@ -337,7 +338,7 @@ class Solver(object):
                               GP_loss, p_enc, s_enc, None, None, None, None, None)
 
             ckpt = self.model_dir + '/model.ckpt'
-            saver.save(sess, ckpt, global_step=epoch+global_step)
+            saver.save(sess, ckpt, global_step=epoch)
             print ("End of Epoch: " + str(epoch) + "!")
         summary_writer.flush()
 
