@@ -14,7 +14,7 @@ seq_len=70
 feat_dim=39
 stack_num=3
 path=/home/grtzsohalf/Audio2Vec
-feat_dir=/nfs/YueLao/grtzsohalf/yeeee/English
+feat_dir=/nfs/Mazu/grtzsohalf/yeeee/English
 init_lr=$1
 p_dim=$2
 s_dim=$3
@@ -27,7 +27,7 @@ if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_t
   exit 1
 fi
 
-exp_dir=/nfs/Mazu/grtzsohalf/yeeee/interpolate_exp
+exp_dir=/nfs/Mazu/grtzsohalf/yeeee/exp
 mkdir -p $exp_dir
 model_dir=$exp_dir/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 log_dir=$exp_dir/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
@@ -47,4 +47,4 @@ mkdir -p $tf_log_dir
 export CUDA_VISIBLE_DEVICES=$device_id
 python3 $path/src/audio2vec_train.py --init_lr=$init_lr --batch_size=$batch_size --seq_len=$seq_len --feat_dim=$feat_dim \
   --p_hidden_dim=$p_dim --s_hidden_dim=$s_dim --n_epochs=$n_epochs --stack_num=$stack_num $tf_log_dir $tf_model_dir \
-  $feat_dir/train_AE.scp $feat_dir/test_AE.scp $feat_dir $model_type 2> $tf_log_dir/train.log
+  $feat_dir/train_AE.scp $feat_dir/test_AE.scp $feat_dir $model_type

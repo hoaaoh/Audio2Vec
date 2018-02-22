@@ -14,7 +14,7 @@ seq_len=70
 feat_dim=39
 stack_num=3
 path=/home/grtzsohalf/Audio2Vec
-feat_dir=/nfs/YueLao/grtzsohalf/yeeee/English
+feat_dir=/nfs/Mazu/grtzsohalf/yeeee/English
 init_lr=$1
 p_dim=$2
 s_dim=$3
@@ -26,7 +26,7 @@ if [ "$model_type" != "default" ] && [ "$model_type" != "noGAN" ] && [ "$model_t
   exit 1
 fi
 
-exp_dir=/nfs/Mazu/grtzsohalf/yeeee/interpolate_exp
+exp_dir=/nfs/Mazu/grtzsohalf/yeeee/exp
 mkdir -p $exp_dir
 model_dir=$exp_dir/model_lr${init_lr}_$p_dim\_$s_dim\_$model_type
 log_dir=$exp_dir/log_lr${init_lr}_$p_dim\_$s_dim\_$model_type
@@ -42,15 +42,15 @@ mkdir -p $log_dir
 mkdir -p $tf_model_dir
 mkdir -p $tf_log_dir
 
-mkdir -p $feat_dir/words_words_AE_test
-mkdir -p $feat_dir/words_spks_AE_test
-mkdir -p $feat_dir/spks_words_AE_test
-mkdir -p $feat_dir/spks_spks_AE_test
+#mkdir -p $feat_dir/words_words_AE_test
+#mkdir -p $feat_dir/words_spks_AE_test
+#mkdir -p $feat_dir/spks_words_AE_test
+#mkdir -p $feat_dir/spks_spks_AE_test
 
-mkdir -p $feat_dir/words_words_AE_train
-mkdir -p $feat_dir/words_spks_AE_train
-mkdir -p $feat_dir/spks_words_AE_train
-mkdir -p $feat_dir/spks_spks_AE_train
+#mkdir -p $feat_dir/words_words_AE_train
+#mkdir -p $feat_dir/words_spks_AE_train
+#mkdir -p $feat_dir/spks_words_AE_train
+#mkdir -p $feat_dir/spks_spks_AE_train
 mkdir -p $feat_dir/phonetic_all
 
 ### testing ###
