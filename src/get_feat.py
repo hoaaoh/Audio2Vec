@@ -78,14 +78,14 @@ def read_and_save_feat(prons, filename, classify_dic, frame_num_list, path, feat
                     ### padding zero ###
                     #print (cont, cls)
 
-                    # if int(cont) < cls : 
-                        # new_frames +=  [[0. for j in range(feat_dim)]for i in range(cls -
-                            # int(cont))]
-                    new_frames = np.array(new_frames, dtype=np.float32)
-                    x = np.arange(cls)
-                    xp = np.linspace(0, cls - 1, new_frames.shape[0])
-                    new_frames = np.vstack([np.interp(x, xp, new_frames[:, i]) for i in \
-                                            range(new_frames.shape[1])]).T
+                    if int(cont) < cls : 
+                        new_frames +=  [[0. for j in range(feat_dim)]for i in range(cls -
+                            int(cont))]
+                    # new_frames = np.array(new_frames, dtype=np.float32)
+                    # x = np.arange(cls)
+                    # xp = np.linspace(0, cls - 1, new_frames.shape[0])
+                    # new_frames = np.vstack([np.interp(x, xp, new_frames[:, i]) for i in \
+                                            # range(new_frames.shape[1])]).T
                     np_new_frames = np.reshape(np.array(new_frames),-1)
                     np_new_frames = np.append(np_new_frames,[word_id])
                     np_new_frames = np.append(np_new_frames,[ID])
