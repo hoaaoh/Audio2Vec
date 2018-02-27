@@ -39,29 +39,39 @@ class Audio2Vec(object):
         with tf.variable_scope('encode') as scope_1:
             W_enc_p = tf.get_variable("enc_w_p", [self.p_memory_dim, self.p_memory_dim])
             b_enc_p = tf.get_variable("enc_b_p", shape=[self.p_memory_dim])
+            # W_enc_p_2 = tf.get_variable("enc_w_p_2", [self.p_memory_dim, self.p_memory_dim])
+            # b_enc_p_2 = tf.get_variable("enc_b_p_2", shape=[self.p_memory_dim])
             W_enc_s = tf.get_variable("enc_w_s", [self.s_memory_dim, self.s_memory_dim])
             b_enc_s = tf.get_variable("enc_b_s", shape=[self.s_memory_dim])
+            # W_enc_s_2 = tf.get_variable("enc_w_s_2", [self.s_memory_dim, self.s_memory_dim])
+            # b_enc_s_2 = tf.get_variable("enc_b_s_2", shape=[self.s_memory_dim])
 
             with tf.variable_scope('encode_p') as scope_1_1:
                 cell = core_rnn_cell.GRUCell(self.p_memory_dim, activation=tf.nn.relu)
                 # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
                 p_enc = self.rnn_encode(cell, feat)
                 p_enc = self.leaky_relu(tf.matmul(p_enc, W_enc_p) + b_enc_p)
+                # p_enc = self.leaky_relu(tf.matmul(p_enc, W_enc_p_2) + b_enc_p_2)
                 scope_1_1.reuse_variables()
                 p_enc_pos = self.rnn_encode(cell, feat_pos)
                 p_enc_pos = self.leaky_relu(tf.matmul(p_enc_pos, W_enc_p) + b_enc_p)
+                # p_enc_pos = self.leaky_relu(tf.matmul(p_enc_pos, W_enc_p_2) + b_enc_p_2)
                 p_enc_neg = self.rnn_encode(cell, feat_neg)
                 p_enc_neg = self.leaky_relu(tf.matmul(p_enc_neg, W_enc_p) + b_enc_p)
+                # p_enc_neg = self.leaky_relu(tf.matmul(p_enc_neg, W_enc_p_2) + b_enc_p_2)
             with tf.variable_scope('encode_s') as scope_1_2:
                 cell = core_rnn_cell.GRUCell(self.s_memory_dim, activation=tf.nn.relu)
                 # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
                 s_enc = self.rnn_encode(cell, feat)
                 s_enc = self.leaky_relu(tf.matmul(s_enc, W_enc_s) + b_enc_s)
+                # s_enc = self.leaky_relu(tf.matmul(s_enc, W_enc_s_2) + b_enc_s_2)
                 scope_1_2.reuse_variables()
                 s_enc_pos = self.rnn_encode(cell, feat_pos)
                 s_enc_pos = self.leaky_relu(tf.matmul(s_enc_pos, W_enc_s) + b_enc_s)
+                # s_enc_pos = self.leaky_relu(tf.matmul(s_enc_pos, W_enc_s_2) + b_enc_s_2)
                 s_enc_neg = self.rnn_encode(cell, feat_neg)
                 s_enc_neg = self.leaky_relu(tf.matmul(s_enc_neg, W_enc_s) + b_enc_s)
+                # s_enc_neg = self.leaky_relu(tf.matmul(s_enc_neg, W_enc_s_2) + b_enc_s_2)
         return p_enc, p_enc_pos, p_enc_neg, s_enc, s_enc_pos, s_enc_neg
 
     def gradient_penalty(self, W_adv_1, b_adv_1, W_adv_2, b_adv_2,
@@ -141,8 +151,12 @@ class Audio2Vec(object):
             W_dec = tf.get_variable("dec_w", [self.p_memory_dim+self.s_memory_dim, \
                                               self.p_memory_dim+self.s_memory_dim])
             b_dec = tf.get_variable("dec_b", shape=[self.p_memory_dim+self.s_memory_dim])
+            # W_dec_2 = tf.get_variable("dec_w_2", [self.p_memory_dim+self.s_memory_dim, \
+                                              # self.p_memory_dim+self.s_memory_dim])
+            # b_dec_2 = tf.get_variable("dec_b_2", shape=[self.p_memory_dim+self.s_memory_dim])
 
             dec_state = self.leaky_relu(tf.matmul(tf.concat([p_enc,s_enc], 1), W_dec) + b_dec)
+            # dec_state = self.leaky_relu(tf.matmul(dec_state, W_dec_2) + b_dec_2)
             cell = core_rnn_cell.GRUCell(self.p_memory_dim+self.s_memory_dim, activation=tf.nn.relu)
             # cell = tf.contrib.rnn.LayerNormBasicLSTMCell(memory_dim, activation=tf.nn.relu)
             dec_out = self.rnn_decode(cell, dec_state)

@@ -1,6 +1,9 @@
 import os
 
-feat_dir = '/nfs/YueLao/grtzsohalf/yeeee/English'
+feat_dir = '/nfs/Mazu/grtzsohalf/yeeee/English'
+if not os.path.exists(os.path.join(feat_dir, 'all_AE')):
+    os.mkdir(os.path.join(feat_dir, 'all_AE'))
+
 seq_len = 70
 feats_dir = os.path.join(feat_dir, 'feats', str(seq_len))
 n_spks = len(os.listdir(feats_dir))
